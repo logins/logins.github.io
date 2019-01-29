@@ -1,6 +1,8 @@
 
-
+# Needed to run on local git repo
 repository: logins/logins.github.io
 
+# Markdown set to kramdown enables LaTeX style along with math equations
+#markdown: kramdown
 
 theme: jekyll-theme-minimal
