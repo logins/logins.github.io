@@ -1,6 +1,8 @@
 ---
 layout: MyPost
 title:  "DADIU Games with Unity"
+author: "Riccardo Loggini"
+excerpt_separator: <!--more-->
 categories: [university]
 tags: [unity,games]
 ---

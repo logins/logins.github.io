@@ -1,6 +1,8 @@
 ---
 layout: MyPost
 title:  "Master's Thesis"
+author: "Riccardo Loggini"
+excerpt_separator: <!--more-->
 categories: [university]
 tags: [rendering]
 ---

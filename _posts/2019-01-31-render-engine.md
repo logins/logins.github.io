@@ -1,6 +1,8 @@
 ---
 layout: MyPost
 title:  "Real-Time Render Engine"
+author: "Riccardo Loggini"
+excerpt_separator: <!--more-->
 categories: [university]
 tags: [rendering]
 ---
