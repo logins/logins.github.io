@@ -7,7 +7,9 @@ layout: MyDefault
 Tarta->Play("");
 ```
 
-$$mean = \frac{\displaystyle\sum_{i=1}^{n} x_{i}}{n}$$
+This is \\(x=2y^2\\) in line math, while this
+\\[mean = \frac{\displaystyle\sum_{i=1}^{n} x_{i}}{n}\\]
+is full line math.
 
 Text can be **bold**, _italic_, or ~~strikethrough~~.
 
