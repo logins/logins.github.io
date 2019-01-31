@@ -1,6 +1,16 @@
 ---
 layout: MyDefault
 ---
+# Latest posts
+{% for post in site.posts %}
+
+## [{{ post.title }}]({{ post.url }})
+> {{ post.excerpt }}
+
+{% endfor %}
+
+* * *
+
 ## This is a test
 ` System.out.Println("This is code");`
 ```cpp
