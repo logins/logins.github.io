@@ -1,0 +1,15 @@
+.linkblocktext a {
+    display:block;
+    font-weight:initial;
+}
+
+.linkblocktext a *:hover, .linkblocktext a *:focus {
+    color:#069;
+}
+
+.linkblocktext a h2{ /* Every <h2> tag inside an <a> tag inside a tag with class="linkblocktext" */
+    color:#267CB9;
+    text-decoration:none;
+  }
+  
+  
