@@ -2,7 +2,9 @@
 # Needed to run on local git repo
 repository: logins/logins.github.io
 
-# Markdown set to kramdown enables LaTeX style along with math equations
-#markdown: kramdown
+title: Riccardo Loggini
+description: Projects Website
+logo: /assets/img/avatar2019_sepia.png
+
 
 theme: jekyll-theme-minimal
