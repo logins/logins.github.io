@@ -5,11 +5,15 @@ layout: MyDefault
 {% for post in site.posts %}
 
 ## [{{ post.title }}]({{ post.url }})
-> {{ post.excerpt }}
+> [{{ post.subtitle }}]({{ post.url }})
 
-{% endfor %}
+
+_{{ post.date | date: "%Y"}} - {{ post.categories[0] }}_
 
 * * *
+
+
+{% endfor %}
 
 ## This is a test
 ` System.out.Println("This is code");`
