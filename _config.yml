@@ -4,7 +4,9 @@ repository: logins/logins.github.io
 
 title: Riccardo Loggini
 description: Projects Website
-logo: /assets/img/Avatar2019_sepia.png
+logo: /assets/img/Avatar2019.png
 
+linkedin_username: riccardologgini
+linkedin_name: Riccardo Loggini
 
 theme: jekyll-theme-minimal
