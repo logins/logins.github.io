@@ -26,5 +26,31 @@
   .icon.icon--linkedin:hover, .icon.icon--linkedin:focus {
     fill: #0077B5;
   }
+
+  .wrapperPost {
+    width:860px; /*Total page width*/
+    margin:0 auto;
+  }
   
+  .sectionPost {
+    width:650px; /*post content column width*/
+    float:right;
+    padding-bottom:50px;
+  }
+
+  .headerPost, .footerPost {
+    padding-right:30px;
+    width:180px;/*post index column width*/
+  }
+
+  headerPost {
+    width:270px;
+    float:left;
+    position:fixed;
+    -webkit-font-smoothing:subpixel-antialiased;
+  }
+
+  headerPost toc ul{
+    padding-inline-start: 20px;
+  }
   
