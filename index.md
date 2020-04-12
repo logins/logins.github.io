@@ -1,7 +1,7 @@
 ---
 layout: default
 ---
-# Latest posts
+# Blog posts
 {% for post in site.posts %}
 
 <div class="linkblocktext">
@@ -19,7 +19,7 @@ Be sure to put a new line between any html and any markdown!
   </a>
 </div>
 
-_{{ post.date | date: "%Y"}} - {{ post.categories[0] }}_
+_{{ post.date | date: "%B %Y"}} - {{ post.categories[0] }}_
 
 * * *
 

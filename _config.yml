@@ -3,10 +3,12 @@ repository: logins/logins.github.io
 
 title: Riccardo Loggini
 subtitle: Projects Website
-description: "A collection of posts about my personal projects. Subjects range from Computer Graphics to Artificial Intelligence (AI)."
+description: "A collection of posts about my personal projects and topics of interest. Subjects range from Real-Time Computer Graphics, Game Engines and C++ Programming."
 logo: /assets/img/Avatar2019.png
 
 linkedin_username: riccardologgini
 linkedin_name: Riccardo Loggini
 
 theme: jekyll-theme-minimal
+
+exclude: /_drafts/excluded/

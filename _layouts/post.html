@@ -7,8 +7,17 @@
 
 {% seo %}
     
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="stylesheet" href="{{ "/assets/css/style.css?v=" | append: site.github.build_revision | relative_url }}">
+<!-- Math formulas render support -->
+<script type="text/javascript">
+  window.MathJax = {
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  };
+</script>
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<link rel="stylesheet" href="{{ "/assets/css/style.css?v=" | append: site.github.build_revision | relative_url }}">
     <!--[if lt IE 9]>
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
     <![endif]-->
@@ -24,12 +33,11 @@
                     
             <toc>
             <h4>Table of Contents</h4>
-            {% include toc.html html=content h_min=2 h_max=3 %}
+            {% include toc.html html=content h_min=1 h_max=3 %}
             </toc>
             
             </headerPost>
             <section class="sectionPost">
-                <h1>{{ page.title }}</h1>
       {{ content }}
 
 </section>

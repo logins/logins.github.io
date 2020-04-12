@@ -6,9 +6,10 @@ author: "Riccardo Loggini"
 tags: [rendering]
 ---
 
-\\[mean = \frac{\displaystyle\sum_{i=1}^{n} x_{i}}{n}\\]
-
 # Header 1
+A math formula will follow:
+
+$$mean = \frac{\displaystyle\sum_{i=1}^{n} x_{i}}{n}$$
 
 This is a normal paragraph following a header. GitHub is a code hosting platform for version control and collaboration. It lets you and others work together on projects from anywhere.
 
