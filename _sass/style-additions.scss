@@ -31,12 +31,25 @@
     max-width:860px; /*Total page width*/
     margin:0 auto;
   }
-  
-  // .sectionPost {
-  //   width:600px; /*post content column width*/
-  //   float:right;
-  //   padding-bottom:50px;
-  // }
+
+  .wrapper {
+    width: 900px;
+  }
+
+  //Default class to apply to post images (centered and 80% scaled width)
+  .postImg {
+      margin: 0 auto;
+      display: block;
+      width: 80%;
+  }
+
+  .wrappedFormula {
+    overflow-x: auto;
+  }
+
+  section {
+    width: 600px;
+  }
 
   .headerPost, .footerPost {
     padding-right:30px;
