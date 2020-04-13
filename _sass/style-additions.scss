@@ -28,15 +28,15 @@
   }
 
   .wrapperPost {
-    width:860px; /*Total page width*/
+    max-width:860px; /*Total page width*/
     margin:0 auto;
   }
   
-  .sectionPost {
-    width:600px; /*post content column width*/
-    float:right;
-    padding-bottom:50px;
-  }
+  // .sectionPost {
+  //   width:600px; /*post content column width*/
+  //   float:right;
+  //   padding-bottom:50px;
+  // }
 
   .headerPost, .footerPost {
     padding-right:30px;
@@ -69,11 +69,11 @@
       display:inline;
     }
   
-    headerPost ul {
-      position:absolute;
-      right:50px;
-      top:52px;
-    }
+    // headerPost ul {
+    //   position:absolute;
+    //   right:50px;
+    //   top:52px;
+    // }
   }
 
   @media print, screen and (max-width: 720px) {
