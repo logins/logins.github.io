@@ -66,17 +66,18 @@ Starting from Vertex Shader side, which is the simplest between the two end poin
     - IndependentBlendEnable: if set to false, only the first render target (index 0) will be considered for blending. If true also index 1 to 7 will be considered.  
     - An array of 8 [D3D12_RENDER_TARGET_BLEND_DESC](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_render_target_blend_desc) , and in D3D12 we can write up to 8 render targets simultaneously. Each one of them has the classic settings present in previous versions of D3D: they define how color computed by pixel shader (Source) should blend with the color already present in the corresponding pixel of the render target (Destination).  
     Each blend description let us set an operation for Final Color (FC) and one for Final Alpha (FA) separately:
-    $$\begin{matrix} (FC)=(SC)(X)(SBF)(+)(DC)(X)(DBF) \\ (FA)=(SA)(SBF)(+)(DA)(DBF) \end{matrix}$$
-    Where:  
-    (SP) and (DC) are Source and Destination Color (the first from pixel shader result and the second from the already existing value in render target)  
-    (X) is vector cross product operation  
-    (SBF) and (DBD) Source and Destination Blend Factors, two [D3D12_BLEND](https://docs.microsoft.com/en-gb/windows/win32/api/d3d12/ne-d3d12-d3d12_blend) enum values that will alter contribution of source and destination values for the final result.  
-    (+) is a logic operation among the possible from [D3D12_LOGIC_OP](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_logic_op) entries  
-    ([for more info visit Braynzar Soft](https://www.braynzarsoft.net/viewtutorial/q16390-12-blending))  
-    Lastly, we also have the possibility to just blend specific channels among R, G, B and A selected with RenderTargetWriteMask that takes an entry from [D3D12_COLOR_WRITE_ENABLE](http://d3d12_color_write_enable) enumeration.  
-    
-    [For more information, refer to output merger official documentation](https://docs.microsoft.com/en-gb/windows/win32/direct3d11/d3d10-graphics-programming-guide-output-merger-stage).  
-      
+        <div class="longFormula">
+        $$\begin{matrix} (FC)=(SC)(X)(SBF)(+)(DC)(X)(DBF) \\ (FA)=(SA)(SBF)(+)(DA)(DBF) \end{matrix}$$
+        </div> 
+        Where:  
+        (SP) and (DC) are Source and Destination Color (the first from pixel shader result and the second from the already existing value in render target)  
+        (X) is vector cross product operation  
+        (SBF) and (DBD) Source and Destination Blend Factors, two [D3D12_BLEND](https://docs.microsoft.com/en-gb/windows/win32/api/d3d12/ne-d3d12-d3d12_blend) enum values that will alter contribution of source and destination values for the final result.  
+        (+) is a logic operation among the possible from [D3D12_LOGIC_OP](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_logic_op) entries  
+        ([for more info visit Braynzar Soft](https://www.braynzarsoft.net/viewtutorial/q16390-12-blending))  
+        Lastly, we also have the possibility to just blend specific channels among R, G, B and A selected with RenderTargetWriteMask that takes an entry from [D3D12_COLOR_WRITE_ENABLE](http://d3d12_color_write_enable) enumeration.  
+
+        [For more information, refer to output merger official documentation](https://docs.microsoft.com/en-gb/windows/win32/direct3d11/d3d10-graphics-programming-guide-output-merger-stage)
     
 -   Rasterizer state configures the fixed-pipeline stage that takes per-vertex data of our geometry in normalised device coordinates (NDC) space and generates per-pixel data in screen-space, to be an input for the pixel shader. Luckily for us, programmer’s job is to feed rasterizer with clip-space coordinates data (obtained by applying projection transform to view-space coords) then the rasterizer will perform clipping, then transform to NDC space, then rasterize and output coordinates in screen-space.  
     [Rasterizer stage](https://docs.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-rasterizer-stage) will always perform Clipping operation, z-divide to provide perspective(incoming vertex position is assumed to be in homogeneous clip-space), Viewport transformation, and depth-bias, all this before performing the actual rasterization of geometry. Optionally it will determine how to invoke the pixel shader if one is bound to the PSO.  
@@ -193,9 +194,9 @@ These additional settings are controlled by calling methods on the Command List,
     $X0,Y0, width,height,MinZ,MaxZ$ are set by using a [D3D12_VIEWPORT](https://docs.microsoft.com/en-gb/windows/win32/api/d3d12/ns-d3d12-d3d12_viewport) structure.  
     MinZ and MaxZ indicate the render target’s depth range in which our geometry will be drawn. To leave the behavior unchanged, that range will be from 0 to 1. The needed operations to apply those values are made at the beginning of the rasterization stage by the system (so we don’t need to take care of it!).  
     For the sake of knowledge, that is achieved by multiplying position data for the following matrix (Viewport transform):
-
-    >$$\left[ \begin{matrix} dw Width/2 & 0 & 0 & 0 \\ 0 & -dw Height/2 & 0 & 0 \\ 0 & 0 & dv MaxZ-dv MinZ & 0 \\ dw X0+dw Width/2 & dw Height/2+dw Y0 & dv MinZ & 1 \end{matrix} \right] $$
-    {: .wrappedFormula}     
+    <div class="longFormula">
+    $$\left[ \begin{matrix} dw Width/2 & 0 & 0 & 0 \\ 0 & -dw Height/2 & 0 & 0 \\ 0 & 0 & dv MaxZ-dv MinZ & 0 \\ dw X0+dw Width/2 & dw Height/2+dw Y0 & dv MinZ & 1 \end{matrix} \right] $$
+    </div>    
     wherere $dv$ and $dw$ are render target's units for width and height.
     
     >Note: We can obtain special effects, such as render everything in foreground (like flat objects for UI purposes) by setting MinZ=MaxZ=0 OR render everything in background (like a skydome) by setting MinZ=MaxZ=1.  
