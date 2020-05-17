@@ -1,8 +1,9 @@
 ---
 layout: post
 title:  "The DX12 Pipeline State Object"
-subtitle: Description of usage for the object that holds pipeline stages' settings in Direct3D 12.
+subtitle: Description of the object that holds pipeline stages' settings in Direct3D 12.
 author: "Riccardo Loggini"
+tocmaxlevel: 3
 tags: [rendering,dx12]
 ---
 

@@ -1,9 +1,9 @@
 ---
 layout: post
-title:  "Using CMake in Visual Studio"
+title:  "CMake in Visual Studio"
 subtitle: Main concepts when using CMake in a Visual Studio environment.
 author: "Riccardo Loggini"
-tocmaxlevel: 1
+tocmaxlevel: 2
 tags: [programming,c++,cmake]
 ---
 # Why Using CMake
@@ -19,7 +19,7 @@ CMake real job is configuring and using the Native Build Tool (the set of IDE+co
 
 Generally we should make sure that the version of CMake that we are using got released after the compiler we are using, just to increase the chance we have all the possible updated tools at our disposal. At the time of writing this article, VisualStudio 2019 is using CMake 3.16.
 
-## Scope of the Article
+### Scope of the Article
 
 The scope of this article is giving a basic but complete understanding of the CMake tool, with a focus on Visual Studio environment, in order to set up a fairly simple project. CMake offers a multitude of tools which are much more in number than the ones described in this article, many of which goes beyond the scope of a base environment setup.
 
@@ -278,7 +278,7 @@ The directories specified in this way will be available as relative path for our
 
 For example when we build a project, all the headers files and folders containing headers inside `${CMAKE_CURRENT_SOURCE_DIR}/include` will be available to get included in our code files, so if we had a folder Peppi inside include that contains Pear.h, then in our source file we can directly write `#include <Peppi/Pear.h>`.
 
-## Handling Properties
+### Handling Properties
 
 Properties relative to a target can be set with [set_property](https://cmake.org/cmake/help/latest/command/set_property.html) or [set_target_properties](https://cmake.org/cmake/help/latest/command/set_target_properties.html), for example
 ```cmake
@@ -453,7 +453,7 @@ Where:
 
 >NOTE: From Visual Studio 2019 there is a CMake Settings Editor that let us edit CMakeSettings.json with a visual interface.
 
-## Macros Available in CMakeSettings.json
+### Macros Available in CMakeSettings.json
 
 A list of Visual Studio macros is available for us to insert in the CMakeSettings
 
@@ -465,7 +465,7 @@ A list of Visual Studio macros is available for us to insert in the CMakeSetting
 -   `${projectDir}`: full path to the folder that contains the root CMakeLists.txt
 -   `${thisFile}`: full path to the folder that contains this file CMakeSettings.json
     
-## System Environment Variables
+### System Environment Variables
 
 System Environment Variables are per-project variables that we can use in Visual Studio configuration to make it dynamic and less verbose, any time there is a text field.  
 These variables use the notation `$(<VarName>)`.  
@@ -475,7 +475,7 @@ We have different System Environment Variables, and/or different values associat
 To check the list of system environment variables, in a Solution project type, for a specific project (and the values associated to them) go to `Project Properties->VC++ Directories->(select one of the fields and press the arrow on the right) ->Edit..->Macros(on the bottom right)`.  
 To see the full list of defined system environment variables for the current Solution [refer to the official documentation](https://docs.microsoft.com/en-us/cpp/build/reference/common-macros-for-build-commands-and-properties?redirectedfrom=MSDN&view=vs-2019#list-of-common-macros).
 
-## The “environments” Block
+### The “environments” Block
 
 The “environments” block in CmakeSettings.json allows us to define new, or change value to  existing, System Environment Variables. That means they will be instantly available to EVERY “configuration” block entry defined down the line. E.g.
 ```json
@@ -548,7 +548,7 @@ Where:
 Visual Studio Installer gives the option to install CMake for its environment so if we plan to just use Visual Studio we do not have to worry about installing anything else.  
 For a more generic version of CMake we can install the program itself that can be downloaded [in the official website](https://cmake.org/download/).
 
-## Generate Native Tool Files from Command Line
+### Generate Native Tool Files from Command Line
 
 The simplest version of a build command in cmake is (from version 3.13)  
 `cmake -S . -B _builds -G "Visual Studio 15 2017" -A x64`
@@ -559,7 +559,7 @@ Where
 -   **-G** option to specify the generator to use.
 -   **-A** option to specify the target platform.
     
-## Build Project from Command Line
+### Build Project from Command Line
 
 Once the native tool files have been generated, as the above example, in _build folder, we can build the project solution with
 
@@ -567,7 +567,7 @@ Once the native tool files have been generated, as the above example, in _build 
 
 And that should be all it is needed to generate executables or libraries, depending on our project, ready to be used.
 
-## Installing a Library
+### Installing a Library
 
 CMake install is used to generate a version of our CMake driven project configured for reusability in other code bases, typically in the form of a library.  
 This version will contain just enough CMake variables, code and binary files to be used outside the current source tree.  
@@ -584,7 +584,7 @@ The process of creating an install-ready source tree requires additional configu
 
 # Good Practices
 
-## Ideal Solution Structure
+### Ideal Solution Structure
 
 It is good practice to structure a C++ project similar to the following  
 ```
@@ -630,7 +630,7 @@ It is good practice to structure a C++ project similar to the following
 -   Each Library folder contains a header file with the only purpose to include all the classes defined in the same scope. That can be included in a project file when we need to reference all the classes that belong to that library.
     
 
-## Inspecting a Library/Executable External Symbols
+### Inspecting a Library/Executable External Symbols
 
 In Windows we can quickly inspect the defined symbols inside a library with [Dumpbin tool](https://docs.microsoft.com/en-us/cpp/build/reference/dumpbin-reference?view=vs-2019) of the command prompt.  
 For static libraries we cause the /symbols option:  
@@ -649,7 +649,7 @@ For shared libraries we can use the /exports option:
       
 >NOTE: Linking errors will be notified at build stage, even if they were done at configuration stage.
 
-## Adding Pre-Compiler Definitions for Build Stage
+### Adding Pre-Compiler Definitions for Build Stage
 
 We can add pre-compiler definitions for build stage for a given target with [target_compile_definitions](https://cmake.org/cmake/help/latest/command/target_compile_definitions.html) like  
 `target_compile_definitions(myTarget PUBLIC "LOG_PHX_VERBOSE")`
@@ -660,7 +660,7 @@ The case is different for [add_definitions](https://cmake.org/cmake/help/v3.0/co
 
 That will be active ONLY for the current directory, so if the current directory will be linked as a library, that definition will NOT be used.
 
-## Further Good Practices
+### Further Good Practices
 
 Are found in Manuel Binna’s [Effective Modern CMake](https://gist.github.com/mbinna/c61dbb39bca0e4fb7d1f73b0d66a4fd1) page.  
 
