@@ -224,7 +224,7 @@ CMakeLists.txt is the only script file that is always necessary for CMake to wor
 We can have more than one CMakeLists, each one of them representing a directory or a subdirectory: by using the [add_subdirectory](https://cmake.org/cmake/help/v3.0/command/add_subdirectory.html)(relative/path/to/subdir) in the main script, we tell CMake to search in that subdirectory for a CMakeLists script to execute, and if found it will be executed straight away.  
 It will follow a step-by-step of a CMakeLists configuration describing all the functions we use.
 
-## Version and Project
+### Version and Project
 ```cmake
 cmake_minimum_required( VERSION 3.1 )
 
