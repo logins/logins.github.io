@@ -18,7 +18,7 @@ The PSO definition will also incorporate the definition of a Root Signature, whi
 # What is The PSO
 The PSO is an object that represents the settings for our graphics device (GPU) in order to draw or dispatch something.
 
-![](/assets/img/posts/PSO_Scheme.jpg){:.postImg}
+![](/assets/img/posts/2020-04-12-DX12PipelineStateObject/PSO_Scheme.jpg){:.postImg}
 
 Brief description of its components purposes follows:
 
@@ -121,7 +121,7 @@ Starting from Vertex Shader side, which is the simplest between the two end poin
 All the different structs describing the various parts of the PSO will serve to create the so called Pipeline State Description object of type [D3D12_GRAPHICS_PIPELINE_STATE_DESC](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_graphics_pipeline_state_desc). From that, the PSO object is obtained by calling `device->CreateGraphicsPipelineState(...)` method.  
 Thankfully, the helper library [D3DX12 (available only on GitHub)](https://github.com/microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12) will provide some helper structs to facilitate this whole process and make it less verbose, by providing another way to create the PSO.
 
-![](/assets/img/posts/PipelineStateStream_Scheme.jpg){:.postImg}
+![](/assets/img/posts/2020-04-12-DX12PipelineStateObject/PipelineStateStream_Scheme.jpg){:.postImg}
 
 This alternative way will use a [D3D12_PIPELINE_STATE_STREAM_DESC](https://docs.microsoft.com/en-gb/windows/win32/api/d3d12/ns-d3d12-d3d12_pipeline_state_stream_desc) type instead of the default PSO description object.  
 We are also going to need to use an [ID3D12Device2](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nn-d3d12-id3d12device2) interface type of device.  
@@ -192,7 +192,7 @@ These additional settings are controlled by calling methods on the Command List,
 -   **Shader parameters**: constant buffers, read-write buffers, and read-write textures, done with all `SetGraphicsRoot` and `SetComputeRoot` methods.
     
 -   **Viewports**: viewports define the 2D area of interest for our submitted geometry among the whole render target surface. They will scale dimensions and apply translations to the render geometry among the render target space, at our disposal.  
-    ![](/assets/img/posts/Viewport_Scheme.jpg){:.postImg}
+    ![](/assets/img/posts/2020-04-12-DX12PipelineStateObject/Viewport_Scheme.jpg){:.postImg}
     $X0,Y0, width,height,MinZ,MaxZ$ are set by using a [D3D12_VIEWPORT](https://docs.microsoft.com/en-gb/windows/win32/api/d3d12/ns-d3d12-d3d12_viewport) structure.  
     MinZ and MaxZ indicate the render target’s depth range in which our geometry will be drawn. To leave the behavior unchanged, that range will be from 0 to 1. The needed operations to apply those values are made at the beginning of the rasterization stage by the system (so we don’t need to take care of it!).  
     For the sake of knowledge, that is achieved by multiplying position data for the following matrix (Viewport transform):
@@ -205,7 +205,7 @@ These additional settings are controlled by calling methods on the Command List,
     Still, in most cases we want the range to cover the whole depth buffer spectrum (from 0 to 1) for our 3D models.
     
 -   **Scissor rectangles** define areas inside the render target to consider valid for the output merger stage. This data is used for the [Scissor Test](https://docs.microsoft.com/en-gb/windows/win32/direct3d9/scissor-test), that will discard every pixel, computed by the pixel shader, that relies outside the bounds defined in scissor rectangles. It is notified to the command list by calling the `RSSetScissorRects` method.  
-    ![](/assets/img/posts/PixelShaderToOutputMerger_Scheme.jpg){:.postImg}
+    ![](/assets/img/posts/2020-04-12-DX12PipelineStateObject/PixelShaderToOutputMerger_Scheme.jpg){:.postImg}
     
 -   **Constant blend factor** sets the scalar value of the factor that will be optionally used during Blending and decided in the PSO Blend State description (when D3D12_BLEND::D3D12_BLEND_BLEND_FACTOR and/or D3D12_BLEND_INV_BLEND_FACTOR are used in the blending formulas). This value is set from the command list using the `OMSetBlendFactor` method.
     
@@ -216,7 +216,7 @@ These additional settings are controlled by calling methods on the Command List,
     `commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);`  
     It specifies what is already declared in PSO under primitive topology type, but now this describes how the input assembler should interpret vertices in the vertex shader for the pipeline to generate the chosen geometry.  
     To name two of them, when we want to render triangles we can state to pick vertices in groups of three from the vertex buffer (e.g. 0-1-2, 3-4-5) in the way known as Triangle List, or have concatenated geometry by re-using the last two vertices of each triangle to generate the next one (e.g. 0-1-2, 2-1-3) a way known as Triangle Strip.  
-    ![](/assets/img/posts/PrimitiveTopologyAdjacency_Scheme.jpg){:.postImg} 
+    ![](/assets/img/posts/2020-04-12-DX12PipelineStateObject/PrimitiveTopologyAdjacency_Scheme.jpg){:.postImg} 
     But of course there are many more primitive topology types, for a full list refer to the [official documentation on primitive topologies](https://docs.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-primitive-topologies).  
       
 # ~Sources

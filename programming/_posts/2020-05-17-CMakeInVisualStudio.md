@@ -11,7 +11,7 @@ tags: [programming,c++,cmake]
 CMake is a tool that allows us to generate project files from our code for a multitude of different environments. By using it we are not tied anymore to a specific IDE environment, like Visual Studio (or a specific version of it), or NetBeans, or CLion, because the project files are going to be independently generated using CMake.  
 We can dictate the project structure in a platform-agnostic manner, so whoever downloads our code can generate the solution project files as we initially planned, regardless of the chosen environment.
 
-![](/assets/img/posts/2020-04-12-DX12PipelineStateObject/CMakeGeneral_Diagram.jpg){:.postImg}
+![](/assets/img/posts/2020-05-17-CMakeInVisualStudio/CMakeGeneral_Diagram.jpg){:.postImg}
 
 CMake real job is configuring and using the Native Build Tool (the set of IDE+compiler environment), depending on some platform-agnostic instructions given by the programmer.
 
@@ -57,7 +57,7 @@ The fundamental objective in CMake is defining a list of Targets and defining Pr
 
 ## CMake Stages
 
-![](/assets\img\posts\2020-04-12-DX12PipelineStateObject\CMakeStages_Diagram.jpg){:.postImg}
+![](/assets\img\posts\2020-05-17-CMakeInVisualStudio\CMakeStages_Diagram.jpg){:.postImg}
 
 -   **Configure** stage will compile the CMake script CMakeLists.txt we wrote and update cache variables in CMakeCache.txt file, described later.
     
@@ -359,15 +359,15 @@ CMakeSettings.json will store build configurations that will be used to generate
 If we use the Visual Studio multi-configuration generator (opposed to single-configuration like Ninja or Make), by default all the possible configurations will be created and stored at generation stage.  
 If we still want to use a platform independent generator like Ninja and to continue using CMake to drive the project entirely, Visual Studio provides the so called [Open Folder mode](https://docs.microsoft.com/en-us/cpp/build/open-folder-projects-cpp?view=vs-2019), which is a way that opposes the usual Solution (.sln) and relies on what is found in folder content instead.
 
-![](/assets\img\posts\2020-04-12-DX12PipelineStateObject\VS_FolderMode_Screen.jpg){:.postImg}
+![](/assets\img\posts\2020-05-17-CMakeInVisualStudio\VS_FolderMode_Screen.jpg){:.postImg}
 
 >NOTE: We could have used CMake with the VisualStudio generator to generate project files and we would be finished with it. There is no need for additional files like the CMakeSettings.json because Visual Studio can take care of all internally with the usual Solution mode. The disadvantage of it is that we will remain tied to the Visual Studio environment which might be a relevant factor if we plan to support multiple platforms. If we are in this last case, using Open Folder mode is preferable instead.
 
-![](/assets\img\posts\2020-04-12-DX12PipelineStateObject\VS_ConfigurationSelect_Screen.jpg){:.postImg}
+![](/assets\img\posts\2020-05-17-CMakeInVisualStudio\VS_ConfigurationSelect_Screen.jpg){:.postImg}
 
 CMakeSettings.json is [a file exclusive to Visual Studio](https://docs.microsoft.com/en-us/cpp/build/cmakesettings-reference?view=vs-2019) and it is where the build configurations and compiler environment are stored. In this way, we can still use those generators in Visual Studio but the multiple configuration settings will be stored in CMakeSettings instead.
 
-![](/assets\img\posts\2020-04-12-DX12PipelineStateObject\VS_Configuration_Diagram.jpg){:.postImg}
+![](/assets\img\posts\2020-05-17-CMakeInVisualStudio\VS_Configuration_Diagram.jpg){:.postImg}
 
   
 A Build Configuration specifies a set of properties to adapt the project to a specific platform or a different level of optimization, e.g. PS4 Debug vs Development Editor vs Release Client.  
@@ -503,7 +503,7 @@ Then defining buildRoot as `“buildRoot”:”${BUILD_ROOT}”`.
 
 launch.vs.json is used to pass arguments to an executable at debug time.
 
-![](/assets\img\posts\2020-04-12-DX12PipelineStateObject\VS_LaunchSelect_Screen.jpg){:.postImg}
+![](/assets\img\posts\2020-05-17-CMakeInVisualStudio\VS_LaunchSelect_Screen.jpg){:.postImg}
 
 By default, the Startup Item drop-down will show ALL executable CMake targets found: by pressing it we will start the Visual Studio debugger with the selected target.  
   
