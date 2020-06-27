@@ -11,10 +11,14 @@ tags: [rendering,dx12]
 
 The Pipeline State Object (PSO) is used to describe how the graphics/compute pipeline will behave in every [Pipeline Stage](https://docs.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-graphics-pipeline) when we are going to render/dispatch something.
 
-
 We can define behavior of both programmable and fixed pipeline stages, by linking compiler shader code and setting a multitude of variable values along the way.
 Other settings will be available to change behavior of in-between stages, such as viewport and scissor rect, from a command list instead.
 The PSO definition will also incorporate the definition of a Root Signature, which is used to define the resources types (and their details) available during execution of the pipeline (e.g. textures exposed to be sampled in pixel shader code).
+
+{% include githubLink.html 
+description="To check a practical usage of the pipeline state object you can refer to my github repo FirstDX12Renderer by clicking here."
+link="https://github.com/logins/FirstDX12Renderer" %}
+
 # What is The PSO
 The PSO is an object that represents the settings for our graphics device (GPU) in order to draw or dispatch something.
 
@@ -113,7 +117,7 @@ Starting from Vertex Shader side, which is the simplest between the two end poin
     [Stream output stage](https://docs.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-output-stream-stage) is located between geometry and rasterization stages. It allows picking data as output from vertex or geometry shader, and making it available (recirculating it) for a subsequent render pass directly as input in the next vertex shader call.  
     This comes useful, for example, when we perform some geometry operation in vertex or geometry shader and the result to be also used for the next frame, as it happens with rendering of particles. This process will be much faster than store that data in a standalone buffer and reuploading it to GPU for the subsequent pass.
     
--   **Root signature** describes the set of resources (e.g. textures) available in each programmable stage. Since this topic is quite broad, a better description will be done in a future article.
+-   **Root signature** describes the set of resources (e.g. textures) available in each programmable stage. Since this topic is quite broad, a better description is done in my [full standalone article about the root signature]({% post_url 2020-06-26-DX12RootSignatureObject %}).
     
 
 ## How To Create the PSO in code
