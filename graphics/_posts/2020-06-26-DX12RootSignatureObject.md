@@ -16,6 +16,8 @@ It specifies the data types that shaders should expect from the application, and
 description="To check a practical usage of the root signature you can refer to my github repo FirstDX12Renderer by clicking here."
 link="https://github.com/logins/FirstDX12Renderer" %}
 
+Composition of the root signature will be described next.
+
 > Note: Reader here is assumed to have a general understanding of D3D12 graphics pipeline and resources. You can read [my article about the Pipeline State Object (PSO)]({% post_url 2020-04-12-DX12PipelineStateObject %}) and an article fully dedicated to shader resources will come later on.
 
 # Composition
