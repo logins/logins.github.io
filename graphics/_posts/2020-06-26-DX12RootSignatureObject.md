@@ -12,11 +12,11 @@ tags: [rendering,dx12]
 The Root Signature is the object that represents the link between the command list and the resources used by the pipeline.  
 It specifies the data types that shaders should expect from the application, and also which pipeline state objects are compatible (those compiled with the same layout) for the next draw/dispatch calls.
 
-> Note: Reader here is assumed to have a general understanding of D3D12 graphics pipeline and resources. You can read [my article about the Pipeline State Object (PSO)]({% post_url 2020-04-12-DX12PipelineStateObject %}) and an article fully dedicated to shader resources will come later on.
-
 {% include githubLink.html 
 description="To check a practical usage of the root signature you can refer to my github repo FirstDX12Renderer by clicking here."
 link="https://github.com/logins/FirstDX12Renderer" %}
+
+> Note: Reader here is assumed to have a general understanding of D3D12 graphics pipeline and resources. You can read [my article about the Pipeline State Object (PSO)]({% post_url 2020-04-12-DX12PipelineStateObject %}) and an article fully dedicated to shader resources will come later on.
 
 # Composition
 
