@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Resource Handling in D3D12"
-subtitle: Managing resources in memory using D3D12
+subtitle: Managing resources in memory using D3D12.
 author: "Riccardo Loggini"
 tocmaxlevel: 2
 tags: [rendering,dx12,d3d12]
@@ -109,7 +109,7 @@ We can also use `D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT` constant instead of
 
 In the case of buffers, we can use a single resource allocation in memory to contain multiple subresources: 64KB is quite a big size for a single buffer resource (e.g. a model-view-projection matrix with 4 bytes per component would be just 64 bytes in total size).
 
-![](/assets/img/posts/2020-07-31-DX12ResourceHandling/AlignmentBuffer_Scheme.jpg){:.postImg)
+![](/assets/img/posts/2020-07-31-DX12ResourceHandling/AlignmentBuffer_Scheme.jpg){:.postImg}
 
 Still, the minimum size requirement for a Constant buffer resource is 256 bytes, still much smaller than the requirement to perform a resource allocation. This number is also represented by the `D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT` constant.  
 Vertex buffers have a maximum alignment of 4 bytes, so much smaller than constant buffers, and they can still be contained in the same resource heap as the constant buffers.
@@ -149,14 +149,14 @@ We can classify resource allocation types between Committed, Reserved or Placed.
 
 ### Committed Resources
 
-![](/assets\img\posts\2020-07-31-DX12ResourceHandling\CommittedResource_Scheme.jpg){:.postImg)
+![](/assets\img\posts\2020-07-31-DX12ResourceHandling\CommittedResource_Scheme.jpg){:.postImg}
 
 Instantiating a committed resource will create a resource heap big enough to fit the whole resource, this is the most standard allocation type inherited from the previous D3D versions.  
 We can allocate a committed resource by using a graphics device object and calling [ID3D12Device::CreateCommittedResource](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createcommittedresource).
 
 ### Placed Resources
 
-![](/assets\img\posts\2020-07-31-DX12ResourceHandling\PlacedResource_Scheme.jpg){:.postImg)
+![](/assets\img\posts\2020-07-31-DX12ResourceHandling\PlacedResource_Scheme.jpg){:.postImg}
 
 Placed Resources are the ones that will be instantiated in an already existing heap big enough to contain the resource. For this reason, they are the lightest weight resource types available, and they are the fastest to create and destroy.  
 They are created by calling the [ID3D12Device::CreatePlacedResource](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createplacedresource#remarks) function.  
@@ -191,7 +191,7 @@ For more in depth information about resource aliasing you can refer to [ID3D12De
 
 ### Reserved Resources
 
-![](/assets\img\posts\2020-07-31-DX12ResourceHandling\ReservedResource_Scheme.jpg){:.postImg)
+![](/assets\img\posts\2020-07-31-DX12ResourceHandling\ReservedResource_Scheme.jpg){:.postImg}
 
 Reserved Resources will allocate a virtual memory range but, initially, without association to any physical GPU memory heap. This is because we can later upload and map parts of the resource, from the CPU to GPU, upon user needs.  
 They are the equivalent of [Tiled Resources](https://docs.microsoft.com/en-us/windows/win32/direct3d11/tiled-resources) in D3D11.  
