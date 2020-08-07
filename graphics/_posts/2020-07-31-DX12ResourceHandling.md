@@ -27,27 +27,17 @@ With a resource description we can fundamentally describe 2 resource types: buff
     
 
 -   Constant buffer (using a Constant Buffer View) in root signature
-    
 -   Shader resource (using a Shader Resource View) in root signature
-    
 -   Unordered access resource (using an Unordered access View) in root signature
-    
 -   Index buffer in the PSO
-    
 -   Vertex buffer in the PSO
-    
 
 **Textures** can be bound to the graphics pipeline as:
     
-
 -   Shader resource (using a Shader Resource View) in root signature
-    
--   Unordered access resource (using an Unordered Access View) in root signature
-    
--   Depth-stencil buffer (using a Depth Stencil View) in the PSO
-    
+-   Unordered access resource (using an Unordered Access View) in root signature  
+-   Depth-stencil buffer (using a Depth Stencil View) in the PSO 
 -   Render target buffer (using a Render Target View) in the PSO
-    
 
 Buffers are usually simpler resources to handle than textures, because textures are made to have more control over how their content is stored in memory and how it is modified.  
 Textures will be treated in a standalone blog post in the near future.
@@ -94,7 +84,7 @@ When talking about D3D12 memory management, **alignment** for a resource is the 
 The allocation size required for a resource will be equal to the first multiple of alignment greater than the resource size.  
 Alignment is always a power of two, and we can query it alongside the resource’s size by using [ID3D12Device::GetResourceAllocationInfo](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-getresourceallocationinfo) function, which takes one or more [D3D12_RESOURCE_DESC](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_resource_desc) as input.
 
-In D3D12 resource alignment appears in forms of common fixed constants:
+D3D12 heap resource alignment appears in forms of common fixed constants:
 
 -   64KB for every buffer and base textures types
     
@@ -351,7 +341,6 @@ When a command list using that resource executes, it expects the resource to be 
 Descriptors need their own specific heaps to be allocated.  
 They are created from a graphics device with [ID3D12Device::CreateDescriptorHeap](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createdescriptorheap) that needs a [D3D12_DESCRIPTOR_HEAP_DESC](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/ns-d3d12-d3d12_descriptor_heap_desc) object as input  
 By default, descriptor heaps can be created with 256 descriptors, but this number is arbitrary.
-
 If a descriptor heap finishes his capacity, we will need to create a new second descriptor heap.
 
 >Note: Only a single [CBV_SRV_UAV](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/ne-d3d12-d3d12_descriptor_heap_type) descriptor heap and a single [SAMPLER](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/ne-d3d12-d3d12_descriptor_heap_type) descriptor heap can be bound to the command list at the same time.
@@ -373,11 +362,11 @@ d3d12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&myFence));
 Its usage can be subdivided in two steps:
 
 -   Signaling the command queue with [ID3D12CommandQueue::Signal](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12commandqueue-signal) method with an integer fence value that uniquely identifies the signal happened between the command queue and the fence object. We get to choose the value that we are going to use to signal the fence, so later we know what to expect.  
-    InCmdQueue->Signal(myFence.Get(), myFenceValue);
+    `myCmdQueue->Signal(myFence.Get(), myFenceValue);`
     
 -   On a tick function, we poll the fence object with [ID3D12Fence::GetCompletedValue](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-getcompletedvalue) to check if the fence value has been reached.  
-    if (InFence->GetCompletedValue() <= myFenceValue)  
-    { /* React Upon Signal Reached */ }  
+    `if (InFence->GetCompletedValue() <= myFenceValue)  
+    { /* React Upon Signal Reached */ }`
       
     
 
