@@ -1,10 +1,10 @@
 ---
 layout: post
-title:  "The DX12 Pipeline State Object"
+title:  "The D3D12 Pipeline State Object"
 subtitle: Description of the object that holds pipeline stages' settings in Direct3D 12.
 author: "Riccardo Loggini"
 tocmaxlevel: 3
-tags: [rendering,dx12]
+tags: [rendering,dx12,d3d12]
 ---
 
 # Why talking about the PSO

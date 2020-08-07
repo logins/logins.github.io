@@ -1,10 +1,10 @@
 ---
 layout: post
-title:  "The DX12 Root Signature Object"
+title:  "The D3D12 Root Signature Object"
 subtitle: Composition and usage of the object that holds references to shader resources in Direct3D 12.
 author: "Riccardo Loggini"
 tocmaxlevel: 3
-tags: [rendering,dx12]
+tags: [rendering,dx12,d3d12]
 ---
 
 # Why talking about the Root Signature?
