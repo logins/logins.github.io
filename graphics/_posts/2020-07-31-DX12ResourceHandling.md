@@ -42,6 +42,174 @@ With a resource description we can fundamentally describe 2 resource types: buff
 Buffers are usually simpler resources to handle than textures, because textures are made to have more control over how their content is stored in memory and how it is modified.  
 Textures will be treated in a standalone blog post in the near future.
 
+# Resource Views
+
+A **Resource View** is an object that fully qualifies and determine the usage type of a resource in the rendering pipeline.  
+Resource views were already present since D3D11: their existence comes from the fact that resources are stored with general purpose formats.  
+These formats can be identified in different ways depending on the usage we want to make out of each single resource.  
+For example, a resource created with [DXGI format](https://docs.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format) `DXGI_FORMAT_R32G32B32A32_TYPELESS` can later at runtime be used as `DXGI_FORMAT_R32G32B32A32_FLOAT` or as `DXGI_FORMAT_R32G32B32A32_UINT` (or other types) depending on how we identify it with the corresponding view object.\\
+One of the constraints we have with texel format is that they need to belong to the same **Format Family** which is usually the part of the format that follows `FORMAT_` and last until the first underscore "_" character.\\
+For example `R32G32B32` family, defining types for three-component 96-bit data, includes the following formats `DXGI_FORMAT_R32G32B32_TYPELESS`, `DXGI_FORMAT_R32G32B32_FLOAT`, `DXGI_FORMAT_R32G32B32_UINT`, `DXGI_FORMAT_R32G32B32_SINT`.  
+  
+
+A view also defines properties of usage for the resource when set in the pipeline.\\
+We have:
+
+- **Constant Buffer View (CBV)** created with [ID3D12Device::CreateConstantBufferView](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createconstantbufferview) method to access shader constant buffers.
+
+-   **Shader Resource View (SRV)** created with [ID3D12Device::CreateShaderResourceView](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createshaderresourceview) method to access a shader resource such as a constant buffer, a texture buffer (buffer with texture data stored in it), a texture or a sampler.
+    
+-   **Unordered Access View (UAV)** created with [ID3D12Device::CreateUnorderedAccessView](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createunorderedaccessview) method to access a unordered resource (roughly a subset of the shader resource types) with atomic operations (thread-safe) in a pixel or a compute shader.
+    
+On a separate category we also have:
+
+-   **DepthStencilView (DSV)** created with [ID3D12Device::CreateDepthStencilView](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createdepthstencilview) method to access a texture resource during depth-stencil testing.
+    
+-   **Render Target View (RTV)** created with [ID3D12Device::CreateRenderTargetView](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createrendertargetview) method to access a texture resource as a render-target.
+
+- **Stream Output View (SOV)**  created with   [ID3D12Device::CreateStreamOutputView](https://microsoft.github.io/DirectX-Specs/d3d/CountersAndQueries.html#stream-output-counters) to reference a stream output buffer.
+
+These views can only be allocated on CPU descriptor heaps (more on this later) and they are transferred to GPU only at the moment of registering commands on the command list (e.g. by using functions like [OMSetRenderTargets](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/nf-d3d12-id3d12graphicscommandlist-omsetrendertargets)).
+
+The last type of views are: 
+
+- **Index Buffer View (IBV)** created with [D3D12_INDEX_BUFFER_VIEW](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_index_buffer_view) structure to reference an index buffer on GPU.
+
+- **Vertex Buffer View (VBV)** created with [D3D12_VERTEX_BUFFER_VIEW](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_vertex_buffer_view) structure to reference a vertex buffer on GPU.
+
+which are also available in CPU only, and used at command list record time, but they do not have specific descriptor heaps to be allocated on.\\  
+These last two are also set directly at command list registration by using [ID3D12GraphicsCommandList::IASetIndexBuffer](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-iasetindexbuffer) method and [ID3D12GraphicsCommandList::IASetVertexBuffers](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-iasetvertexbuffers) method.
+
+# Descriptors
+
+A **Descriptor** is a memory storage for a Resource View in CPU and/or GPU.\\
+If they are allocated both on CPU and GPU, we will have to use copy operations to transfer changes from one side to the other upon needs.  
+The root signature will ultimately use descriptors: such descriptors will contain views that reference the resources (and the type of usage) we want in the pipeline.
+
+>Note: the driver does not track the validity of descriptors: the application has the responsibility over the validity of the descriptors in use, and so the relative stored view objects and the resources referenced by them.
+
+D3D12 wants a descriptor bound for all the slots required by shaders, and so by the root signature.\\
+Sometimes we want to use a shader without using all its resource slots.\\
+That is why we can create **Null Descriptors** by, when creating a view, specifying a resource desc but not the resource itself.
+
+Some other times we might not need to specify custom settings to describe the usage of a resource and we can leave the API set the default settings for the view object we want to create.\\
+These types are called **Default Descriptors**, and they are made by, when creating a view, setting the `VIEW_DESC` input to `nullptr` and just filling the input resource parameter.
+
+## Descriptor Heaps
+
+Descriptors are allocated in **Descriptor Heaps**, a different data structure from where we allocate resources: we will first need to allocate a descriptor heap to then be able to store descriptors in it.
+
+Descriptor heaps are created from a device with [ID3D12Device::CreateDescriptorHeap](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createdescriptorheap) that needs a `D3D12_DESCRIPTOR_HEAP_DESC` object as input.  
+When using such method, the flag **Shader Visible**    `D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE` is quite revant, because it will determine if the descriptor heap will be allocated in GPU other than CPU.
+
+If this flag is used, there is no automatic synchronization mechanism between CPU and GPU side, and all the changes we want to operate in them will have to be done manually.  
+To bind a descriptor heap to a command list, the heap needs to be shader visible.
+
+Descriptor heaps are mainly of two types
+
+-   **CBV_SRV_UAV** that will be able to store descriptor ranges containing SBVs, SRVs and UAVs. These are the only types of descriptors to be referenced in a descriptor heap since the only ones that can be used as resources by shaders.
+    
+-   **SAMPLER** that will be able to store sampler objects definitions.
+    
+
+>Note: Only a single `CBV_SRV_UAV` descriptor heap and a single `SAMPLER` descriptor heap can be bound to the command list at the same time.  
+The command list will have to bind a descriptor heap with [ID3D12GraphicsCommandList::SetDescriptorHeaps](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-setdescriptorheaps) method in order to use any descriptor!
+
+## Descriptor Handles
+
+It is important to note that the methods generating the views all have:
+
+-   Input a resource and/or a `VIEW_DESC` object.  
+  
+-   Output a **CPU descriptor handle** that represents the start of the descriptor heap that holds the view object.
+
+A **Descriptor Handle** is a wrapper object for a memory address where a descriptor is stored.
+
+The API expects the programmer to work exclusively with the descriptor handle memory address (and relative pointer arithmetics) while dereferencing such address is undefined behavior.
+
+There are two types of descriptor handle:
+
+-   **CPU Descriptor Handle** contained in [D3D12_CPU_DESCRIPTOR_HANDLE](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_cpu_descriptor_handle) structure, holds a pointer to a descriptor allocated on CPU.
+    
+-   **GPU Descriptor Handle** contained in [D3D12_GPU_DESCRIPTOR_HANDLE](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_gpu_descriptor_handle) structure, holds a pointer to a descriptor handle allocated on GPU.// A valid GPU descriptor handle comes from a descriptor heap allocated on GPU.
+    
+
+We can retrieve the descriptor handle of the first descriptor allocated in a descriptor heap with
+
+-   [ID3D12DescriptorHeap::GetCPUDescriptorHandleForHeapStart](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/nf-d3d12-id3d12descriptorheap-getcpudescriptorhandleforheapstart)
+    
+-   [ID3D12DescriptorHeap::GetGPUDescriptorHandleForHeapStart](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/nf-d3d12-id3d12descriptorheap-getgpudescriptorhandleforheapstart) where this returns a valid address when the descriptor heap has been allocated on GPU as well (shader visible).
+    
+
+When handling descriptor handles we will often need to perform pointers arithmetic. For doing that we need to take into consideration the **Descriptor Size** in memory, and that is hardware dependent (usually 32 or 64 bytes).  
+It is possible to retrieve the exact current size with the function:
+
+-   [ID3D12Device::GetDescriptorHandleIncrementSize](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/nf-d3d12-id3d12device-getdescriptorhandleincrementsize)
+    
+
+so that will be the unit measure to, for example, adding or subtracting from a descriptor handle address to move from one descriptor to another in memory.
+
+## Copying Descriptors
+
+When handling descriptors, in many different situations we might need to copy descriptor ranges from one descriptor heap to another.
+
+One of the most common use cases is as follows
+
+1.  First create ranges of descriptors, and so view objects, on CPU only (CPU visible) with the attributes we need for a specific command list usage. This is also known as **Staging Descriptors**.
+    
+2.  After all that we can copy all these descriptor ranges to a descriptor heap on GPU (shader visible), currently bound to the command list, so we will be able to use them in the rendering operations.
+    
+To copy descriptors from one heap to another we can use either
+
+-   [ID3D12Device::CopyDescriptors](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/nf-d3d12-id3d12device-copydescriptors)
+    
+-   [ID3D12Device::CopyDescriptorsSimple](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/nf-d3d12-id3d12device-copydescriptorssimple)
+    
+
+where the input descriptors need to be on CPU and the destination descriptors can be on CPU only or on GPU as well (shader visible).
+
+## Using Descriptors in Root Signature
+
+Once we have updated the descriptors we want to use on the descriptor heap currently bound to the command list, we need to reference them in the root signature to be able to ultimately reference the resources we want to use in shaders.
+
+![](/assets/img/posts/2020-07-31-DX12ResourceHandling/Descriptors_Scheme.jpg){:.postImg}
+
+Resuming the steps for the flow we usually go through with descriptors:
+
+ 1. Create a descriptor heap on GPU.
+    
+ 1. Bind such descriptor heap to the command list.
+    
+ 2. Create views to represent resources we want to use in shaders and copy the relative descriptors to the GPU descriptor heap.
+    
+ 3. Create a descriptor range with [D3D12_DESCRIPTOR_RANGE](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_descriptor_range) structure to define the link between our descriptor range in memory and the shader registers we want to use with it. A descriptor range will define 
+    * The range type (either CBV, SRV, UAV or SAMPLER)
+        
+    * Num descriptors in this range
+        
+    * Base shader register for the range, e.g. if we want to use an SRV descriptor range to be referenced from t0 in shaders, here we are going to set 0.
+        
+    * DescriptorOffsetFromTableStart descriptor offset from the staring one referenced by the root table that contains this descriptor range.
+        
+    * Register Space is described in the previous article about the root signature.
+    
+6.  Create a Root Table object with [D3D12_ROOT_DESCRIPTOR_TABLE](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_root_descriptor_table) structure that references such range.
+    
+7.  Create a Root Parameter with [D3D12_ROOT_PARAMETER](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_root_parameter) structure referencing the previous descriptor table, or being a bit less verbose, using first [CD3DX12_DESCRIPTOR_RANGE1](https://docs.microsoft.com/en-us/windows/win32/direct3d12/cd3dx12-descriptor-range1) and then [CD3DX12_ROOT_PARAMETER1](https://docs.microsoft.com/en-us/windows/win32/direct3d12/cd3dx12-root-parameter1) structure and call `InitAsDescriptorTable`.  
+    The root parameter is essentially just a wrapper for either a root constant, a root descriptor or a root table and it is used to initialize the root signature.
+    
+8.  Create the root signature with the created root parameter bound into it.
+    
+9.  To finish we want to set the root table content bound to the root signature at runtime before issuing render commands. We can do so with:
+    
+    *  [ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-setgraphicsrootdescriptortable) method for a graphics pipeline state.
+        
+    *  [ID3D12GraphicsCommandList::SetComputeRootDescriptorTable](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-setcomputerootdescriptortable) method for a compute pipeline state.
+    
+
+>Note: This was an example using a root descriptor table, but other cases include root constants and root descriptors. Still using descriptor tables is the most common case.\\
+You can read more about root descriptors in my previous [article about the root signature]({% post_url 2020-06-26-DX12RootSignatureObject %}).
+
 # Memory Management
 
 Starting by briefly describing the types of GPU memory we can consider within an application:
@@ -335,17 +503,6 @@ In this case we can use the [UpdateSubresources](https://docs.microsoft.com/en-u
 >Note: UpdateSubresource gives the possibility to update multiple resources, allocated within a single buffer, at the same time. If multiple subresources need updating, subresourceData will become an array with information per each element to update.
 
 When a command list using that resource executes, it expects the resource to be unmapped and all the changes to be already applied, but no checks are done about it, and this is again up to the user.
-
-## Descriptor Allocation on GPU
-
-Descriptors need their own specific heaps to be allocated.  
-They are created from a graphics device with [ID3D12Device::CreateDescriptorHeap](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createdescriptorheap) that needs a [D3D12_DESCRIPTOR_HEAP_DESC](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/ns-d3d12-d3d12_descriptor_heap_desc) object as input  
-By default, descriptor heaps can be created with 256 descriptors, but this number is arbitrary.
-If a descriptor heap finishes his capacity, we will need to create a new second descriptor heap.
-
->Note: Only a single [CBV_SRV_UAV](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/ne-d3d12-d3d12_descriptor_heap_type) descriptor heap and a single [SAMPLER](https://docs.microsoft.com/en-us/windows/desktop/api/d3d12/ne-d3d12-d3d12_descriptor_heap_type) descriptor heap can be bound to the command list at the same time.
-
-The usage of descriptor heaps was described in the previous article regarding the root signature.
 
 ## Fence Objects For Resource Activity Tracking
 
