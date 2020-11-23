@@ -54,7 +54,7 @@ The compute pipeline states the following definitions:
  `SV_DispatchThreadID =(SV_GroupID⋅NumThreadsPerGroup)+SV_GroupThreadID`
 
   - **SV\_GroupIndex** (uint) flattened array index version of the SV\_GroupID.\\
- `SV_GroupIndex = SV_GroupThreadID.z*NumThreadsPerGroup.y*NumThreadsPerGroup.x + SV_GroupThreadID.y*NumThreadsPerGroup.x + 
+ `SV_GroupIndex = SV_GroupThreadID.z * NumThreadsPerGroup.y *NumThreadsPerGroup.x + SV_GroupThreadID.y*NumThreadsPerGroup.x + 
 SV_GroupThreadID.x`
 
 
@@ -434,14 +434,16 @@ device->CreateUnorderedAccessView(myTexture.Get(), nullptr, uavDesc, myHeapUavDe
 7) Copy the descriptor in the descriptor heap (in GPU) in the spot expected by the root signature
  ```cpp
  // Copy the staged CPU visible descriptors to the GPU visible descriptor heap bound to the command list
-            device->CopyDescriptorsSimple(
+device->CopyDescriptorsSimple(
 1, 
 myHeapUavDescriptor.GetDescriptorHandle(), 
 myDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 
 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
- // Set the descriptors on the command list using the passed-in setter function.
-m_d3d12CommandList->SetComputeRootDescriptorTable(0,)
+// Reference the updated descriptor from GPU in the command list
+m_d3d12CommandList->SetComputeRootDescriptorTable(
+0,
+myDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 // Dispatch command
 m_d3d12CommandList->Dispatch( numGroupsX, numGroupsY, numGroupsZ );
