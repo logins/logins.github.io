@@ -68,7 +68,7 @@ To explain what gamma correction is, we first need to define two types of color 
 **Gamma Color Space** is a color domain where mapping between colors and their numerical value is either an exponential or logarithmic curve function (and not a straight line).
 The exponent for the exponential function is called **Gamma**.
 
-![](/assets\img\posts\2020-08-31-D3D12Textures\GammaTransferFunction_Plot.jpg){:.postImg} 
+![](/assets\img\posts\2020-08-31-D3D12Textures\PowerFunction_Plot.jpg){:.postImg} 
 
 The need of using gamma space arises for two reasons:
 
@@ -98,7 +98,24 @@ The conversion from a gamma corrected value to its linear correspondent is made 
 $${ x }_{ linear }={ \left( { x }_{ gamma } \right)  }^{ 2.2 }$$
 
 Still, the definition of sRGB format uses a slightly different version than the usual power-of transfer function.
-The conversion from sRGB to linear is defined as:
+
+![](/assets\img\posts\2020-08-31-D3D12Textures\sRGBTransferFunction_Plot.jpg){:.postImg} 
+
+The conversion from linear space color intensity to sRGB is:
+<div class="longFormula">
+$$ 
+\gamma \left( x \right) =
+    \begin{cases} 
+    12.92\quad x  & u\le 0.0031308 \\ 
+    1.055\quad { x }^{ 1/2.4 }-0.055 & otherwise 
+    \end{cases}
+$$
+</div>
+
+where $u$ is either $R,\quad G\quad or\quad B$ in linear space.  
+(source [Wikipedia](https://en.wikipedia.org/wiki/SRGB#Specification_of_the_transformation))
+
+Meanwhile the conversion from sRGB to linear is defined as:
 
 $${ \gamma  }^{ -1 }\left( u \right) =
 \begin{cases} \frac { u }{ 12.92 } & u\le 0.04045 \\ 
@@ -107,19 +124,6 @@ $${ \gamma  }^{ -1 }\left( u \right) =
 
 where $u$ is either $R_{sRGB}\quad or\quad G_{ sRGB }\quad or\quad B _{ sRGB }$.
 
-Meanwhile the conversion from linear space color intensity to sRGB is:
-<div class="longFormula">
-$$ 
-\gamma \left( u \right) =
-    \begin{cases} 
-    12.92\quad u  & u\le 0.0031308 \\ 
-    1.055\quad { u }^{ 1/2.4 }-0.055 & otherwise 
-    \end{cases}
-$$
-</div>
-
-where $u$ is either $R,\quad G\quad or\quad B$ in linear space.  
-(source [Wikipedia](https://en.wikipedia.org/wiki/SRGB#Specification_of_the_transformation))
 
   
 > Note: In D3D12 by specifying that a shader resource view’s texel format is sRGB, this information will be used by samplers.  
@@ -127,7 +131,7 @@ where $u$ is either $R,\quad G\quad or\quad B$ in linear space.
 
   
 
-# Practical Usage
+# Practical Texture Usage
 
 In D3D12 textures are resources, defined by [D3D12_RESOURCE_DESC](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_resource_desc) structure.
 
