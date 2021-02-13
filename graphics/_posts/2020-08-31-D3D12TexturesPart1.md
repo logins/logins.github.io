@@ -15,6 +15,10 @@ This is the first of two posts related to textures, you can find [the second par
 
 Textures are a very broad topic in computer graphics and D3D12, here you will find my humble take on describing the sides that I found most important to know about and that I wanted to learn myself.
 
+{% include githubLink.html 
+description="To check a practical usage of textures you can refer to my github repo FirstDX12Renderer by clicking here."
+link="https://github.com/logins/FirstDX12Renderer" %}
+
 # Texture Composition
 
 Textures are data used to display images in computer graphics.  

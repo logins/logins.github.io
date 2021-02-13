@@ -18,6 +18,10 @@ This ability to generically adapt to any type of calculus makes the compute pipe
 
 This post takes a practical and fundamental approach to the use of Direct Compute in DirectX 12 by first describing the available tools and then going through a basic usage in code.
 
+{% include githubLink.html 
+description="To check a practical usage of compute shaders you can refer to my github repo FirstDX12Renderer by clicking here."
+link="https://github.com/logins/FirstDX12Renderer" %}
+
 # The Compute Pipeline
 
 The compute pipeline was present since DirectX10 and the relative API goes under the name of **DirectCompute** (something aside from Direct3D).

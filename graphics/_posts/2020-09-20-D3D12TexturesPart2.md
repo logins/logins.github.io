@@ -13,6 +13,10 @@ Since the main article about textures was too long, I dediced to split it in two
 
 This second post about textures will go trough filtering, swizzling, gamma correction and practical texture usage in D3D12.
 
+{% include githubLink.html 
+description="To check a practical usage of textures you can refer to my github repo FirstDX12Renderer by clicking here."
+link="https://github.com/logins/FirstDX12Renderer" %}
+
 # Texture Filtering
 
 In a texture sampling context, **Filtering** is the set of operations that we perform on the texels surrounding the sampling point, to determine the output color.  

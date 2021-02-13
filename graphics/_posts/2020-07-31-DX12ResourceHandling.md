@@ -14,6 +14,10 @@ Objects called resource views are created to reference buffer resources to the g
 I talked about resource views in my previous [article regarding the Root Signature]({% post_url 2020-06-26-DX12RootSignatureObject %}).  
 To use resources we need to know how we can use them, how they are integrated within the pipeline, what are the available types and how they are structured.
 
+{% include githubLink.html 
+description="To check a practical usage of resource handling you can refer to my github repo FirstDX12Renderer by clicking here."
+link="https://github.com/logins/FirstDX12Renderer" %}
+
 # Resource Types
 
 A resource in D3D12 is created starting from a description object, usually of type [D3D12_RESOURCE_DESC](https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_resource_desc) or, if we are using d3dx12.h header library, of type [CD3DX12_RESOURCE_DESC](https://docs.microsoft.com/en-us/windows/win32/direct3d12/cd3dx12-resource-desc).  

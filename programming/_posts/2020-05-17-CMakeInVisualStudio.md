@@ -19,6 +19,10 @@ CMake real job is configuring and using the Native Build Tool (the set of IDE+co
 
 Generally we should make sure that the version of CMake that we are using got released after the compiler we are using, just to increase the chance we have all the possible updated tools at our disposal. At the time of writing this article, VisualStudio 2019 is using CMake 3.16.
 
+{% include githubLink.html 
+description="To check a practical usage of CMake you can refer to my github repo FirstDX12Renderer by clicking here."
+link="https://github.com/logins/FirstDX12Renderer" %}
+
 ### Scope of the Article
 
 The scope of this article is giving a basic but complete understanding of the CMake tool, with a focus on Visual Studio environment, in order to set up a fairly simple project. CMake offers a multitude of tools which are much more in number than the ones described in this article, many of which goes beyond the scope of a base environment setup.
