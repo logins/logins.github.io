@@ -40,8 +40,10 @@
             <section class="sectionPost">
       {{ content }}
 
+      {% include disqusComments.html %}
 </section>
 <footer class="footerPost">
+  <div id="disqus_thread"></div>
 
   <p>Opinions expressed are solely my own and do not express the views or opinions of my employer.</p>
                 
