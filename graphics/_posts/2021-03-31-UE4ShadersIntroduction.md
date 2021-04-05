@@ -141,7 +141,7 @@ The base class for shaders is `FShader`, but we find two main types of shaders t
 
 ## Shader Parameters
 
-We call Shader Parameters the objects that identify resource types used by a shader.  
+We call Shader Parameters the objects that identify resource slots used by a shader.  
 These parameters will be used when setting resources for a graphics or compute operation.  
 The process of setting a shader parameter will consist in binding a resource to the command list at the index specified by the shader parameter.
 
