@@ -436,29 +436,25 @@ As very well explained in [this stackoverflow thread](https://stackoverflow.com/
 
 Another tool that we have from the C++11 standard library is the combination of the [synchronization primitive std::mutex](https://en.cppreference.com/w/cpp/thread/mutex) and [std::condition\_variable](https://en.cppreference.com/w/cpp/thread/condition_variable) types.
 
-A mutex can be used to prevent shared data from being accessed by multiple threads without correct ordering of operations, while the condition variable can generate signals to communicate between threads.\\
-The following example is heavily inspired by an [article by thispointer.com](https://thispointer.com/c11-multithreading-part-7-condition-variables-explained/):
-```cpp
-std::mutex m_mutex;
-std::condition_variable m_condVar;
-bool m_IsDataLoaded = false;
-
-// From thread A
-// ..Load data..
-std::lock_guard<std::mutex> guard(m_mutex); // Lock_guard will be unlocked when it gets destroyed (so when the scope ends)
-// Set some member variables
-// Wakes up a single sleeping (in wait) thread
-m_condVar.notify_one();
-
-// From thread B
-std::unique_lock<std::mutex> mutexLock(m_mutex);
-m_condVar.wait(mutexLock); // blocks (puts to sleep) the current thread until the m_condVar gets signaled
-// When we arrive here, the thread has been woken up and the condition variable has been signaled: data is loaded and it can now be processed
-```
-
+A mutex can be used to prevent shared data from being accessed by multiple threads without correct ordering of operations, while the condition variable can generate signals to communicate between threads.  
 >Note: From C++17 instead of `std::lock_guard` we can use `std::scoped_lock`.
 
-The difference between `std::unique_lock` and `std::lock_guard` is that we can lock and unlock a unique_lock at our will, meanwhile lock_guard will unlock when it gets destroyed (so most of the time, when the scope ends). That is also why for a `std::condition_variable` we need a `std::unique_lock`.
+The difference between `std::unique_lock` and `std::lock_guard` is that we can lock and unlock a unique_lock at our will, meanwhile lock_guard will unlock when it gets destroyed (so most of the time, when the scope ends). That is also why perform a wait on a `std::condition_variable` we need a `std::unique_lock`.  
+The following example is heavily inspired by an [article by thispointer.com](https://thispointer.com/c11-multithreading-part-7-condition-variables-explained/) where you can find also the code example.
+
+![](/assets\img\posts\2020-12-31-RenderThreadJobification\CondVarExample_Scheme.jpg){:.postImg}
+
+In this example thread 1 wants to perform operations with some data that needs to be loaded. The strategy here is running a second thread in charge of loading the data, meanwhile the first thread can execute other initial operations.  
+When the first thread is ready to handle the loaded data, it will call **wait on the condition variable**, and this will execute the following:
+1. Release the acquired lock.
+2. Put the thread to sleep up until the condition on the wait gets satisfied.
+
+Then the second thread will load the data, and acquire the lock.  
+When it succeeds, it will set the variable for the condition (in this case isDataLoaded) to true, and finally calls `notify_one` on the condition variable.  
+This last action has the following effects
+1. Wakes up a single thread waiting on the condition variable.
+
+>Note: the notify will Not release the lock! We need to manually release it or we need to wait for that lock to release itself (e.g. going out of scope)!
 
 Calling the [function notify\_one()](http://www.cplusplus.com/reference/condition_variable/condition_variable/notify_one/) on the condition variable will signal a single thread waiting for such condition, while calling [notify\_all()](https://en.cppreference.com/w/cpp/thread/condition_variable/notify_all) will notify all of them.
 
@@ -527,3 +523,6 @@ Vtune is ofcourse specialized in Intel CPUs but it also supports AMD ones.
     [https://stackoverflow.com/questions/11004273/what-is-stdpromise/12335206#12335206](https://stackoverflow.com/questions/11004273/what-is-stdpromise/12335206#12335206)
     and
     [https://stackoverflow.com/questions/12620186/futures-vs-promises](https://stackoverflow.com/questions/12620186/futures-vs-promises)
+
+- Locks and Condition Variables - CS 140 - Stanford University  
+[https://web.stanford.edu/~ouster/cgi-bin/cs140-spring14/lecture.php?topic=locks](https://web.stanford.edu/~ouster/cgi-bin/cs140-spring14/lecture.php?topic=locks)
