@@ -9,42 +9,42 @@ tags: [programming,c++,threads,pool]
 
 # Why Jobify The Render Thread
 
-From the arrival of multithreaded programming in the video game scene (around 2010) the render thread has become a standard when talking about game engines.\\
+From the arrival of multithreaded programming in the video game scene (around 2010) the render thread has become a standard when talking about game engines.  
 Its structure is changing over the years, from first being tied to the game tread to then now be identified as a set of asynchronous tasks.
 
-I wanted to know more about it and the latest technical advancements that can be useful to build a modern real-time renderer.\\
+I wanted to know more about it and the latest technical advancements that can be useful to build a modern real-time renderer.  
 This article ended on describing more general multithreading on a game engine rather than focusing too much on render thread details: another big topic really close to this one is implementing a Render Graph, a system used to subdivide render code into optimal jobs, but it will not be mentioned here because too big to describe. Possibly in the future I will make a post dedicated to it.
 
-In this post I will briefly go through concepts of parallel execution and patterns for a job system. The topic will then move to render threads and how modern engines are handling it. Toward the end I cite some implementations of job systems and thread pools, to then describe the most common C++ tools used to build such systems.\\
+In this post I will briefly go through concepts of parallel execution and patterns for a job system. The topic will then move to render threads and how modern engines are handling it. Toward the end I cite some implementations of job systems and thread pools, to then describe the most common C++ tools used to build such systems.  
 This article is more about concepts than code, and it can be used as a first read to get into job systems and multi-threaded engines, before an actual implementation.
 
 # Parallel Execution
 
-When talking by parallel execution we generally mean executing two or more chunks of code concurrently.\\
+When talking by parallel execution we generally mean executing two or more chunks of code concurrently.  
 This does not necessarily mean that we are using a CPU with multiple cores: we can execute two programs on a single computation unit, by taking turns to use it.
 
-We can then talk about **hardware threads** , a name for the physical available cores on the CPU, and the **software threads** or simply threads, which are software constructs to organize work for the physical side.\\
-In this context, an entire application is identified as a **process** , and in an application we can have one or more concurrent software threads.\\
-Threads are considered the basic unit of execution, in the sense that code flow running on each one of them is linear.\\
-There is then a **thread scheduler** that will organize the work of the software threads to be mapped into the physical ones: this process aims to keep the physical CPU cores always as busy as possible.\\
+We can then talk about **hardware threads** , a name for the physical available cores on the CPU, and the **software threads** or simply threads, which are software constructs to organize work for the physical side.  
+In this context, an entire application is identified as a **process** , and in an application we can have one or more concurrent software threads.  
+Threads are considered the basic unit of execution, in the sense that code flow running on each one of them is linear.  
+There is then a **thread scheduler** that will organize the work of the software threads to be mapped into the physical ones: this process aims to keep the physical CPU cores always as busy as possible.  
 A (software) thread is composed by:
 - Thread ID
 - Program Counter: it refers to a CPU hardware register that contains the address of the instruction to execute.
 - Register Set: a region of memory used to execute the instructions. They become explicit when we inspect machine code out of our C++ code.
 - Stack: the call stack of the executed code, a last-in-first-out (LIFO) queue of active subroutines (function calls).
 
-Multiple threads can then share resources (variables) which access needs to be moderated by synchronization primitives.\\
-A thread can **lock** a resource, or a code region, meaning that the thread has exclusive access to it, and the other threads that want to access it will have to wait their turn.\\
+Multiple threads can then share resources (variables) which access needs to be moderated by synchronization primitives.  
+A thread can **lock** a resource, or a code region, meaning that the thread has exclusive access to it, and the other threads that want to access it will have to wait their turn.  
 We then can have a situation of **dead lock** , where two or more threads are stuck waiting for each other to release locks.
 
 ## Split Work Into Jobs
 
 When there is benefit to divide the operations on multiple threads, TripleA engines split their work into **Jobs** , and each of those jobs can depend on the execution of other jobs.
 
-Jobs can then be split into independent sub-activities called **Tasks**.\\
-A Task can be seen as a function call, stored into an object. They should be independent from other tasks so they can be executed in parallel, and the ideal number of tasks per each job is the number of physical threads available (or a multiple of it) so we can maximize the available hardware parallel capabilities.\\
-Tasks are intended to run by a **Task Manager** that, from a user programmer point of view, can be seen as a black box where we send the task to execute as input and it will take care of the rest.\\
-Task manager will select tasks to execute from a FIFO queue and run them by available threads from a **thread pool**.\\
+Jobs can then be split into independent sub-activities called **Tasks**.  
+A Task can be seen as a function call, stored into an object. They should be independent from other tasks so they can be executed in parallel, and the ideal number of tasks per each job is the number of physical threads available (or a multiple of it) so we can maximize the available hardware parallel capabilities.  
+Tasks are intended to run by a **Task Manager** that, from a user programmer point of view, can be seen as a black box where we send the task to execute as input and it will take care of the rest.  
+Task manager will select tasks to execute from a FIFO queue and run them by available threads from a **thread pool**.  
 The threads in the pool are called **Worker Threads** , and a pool usually contains a number of elements equal to the number of available CPU cores for the application.
 
 ![](/assets/img\posts\2020-12-31-RenderThreadJobification\TaskManager_Scheme.jpg){:.postImg}
@@ -57,7 +57,7 @@ When a selected thread from the pool will execute a task the following will happ
 
 >Note: the system should aim to have tasks with as few dependencies and shared data as possible in order to have the minimum waiting time when handling concurrent threads.
 
-The advantage of using this structure is that we have a layer abstraction from the current platform and we do not have to care about referencing specific threads, or the CPU cores quantity or other hardware details.\\
+The advantage of using this structure is that we have a layer abstraction from the current platform and we do not have to care about referencing specific threads, or the CPU cores quantity or other hardware details.  
 The way we can use this system from a programming end point, is as follows:
 
 ```cpp
@@ -80,23 +80,23 @@ TaskManager::WaitForCounter(jobCounter, 0);
 }
 
 ```
-The WaitForCounter function will have to stall the current thread up until all the jobs will finish executing and the counter will be decreased to 0.\\
-A design pattern like this will bring the benefit of the easiness for a job to wait for another: just call WaitForCounter().\\
+The WaitForCounter function will have to stall the current thread up until all the jobs will finish executing and the counter will be decreased to 0.  
+A design pattern like this will bring the benefit of the easiness for a job to wait for another: just call WaitForCounter().  
 An ideal job duration is between 500us and 2000us.
 
 A thread pool can be implemented by using already existing APIs, for example [Intel Threading Building Blocks](https://software.intel.com/content/www/us/en/develop/tools/oneapi/components/onetbb.html) or the many found on github. More examples about this in the Available Tools Section.
 
-Eventually we can have multiple job queues, each with a different **priority level**.\\
+Eventually we can have multiple job queues, each with a different **priority level**.  
 For example, the simulation thread, the one that computes gameplay, needs to be executed as fast as possible so the jobs spawned by it will have high priority.
 
 Here there is an example of thread binding subdivision for an intel i5 of 2020, having 6 physical cores:
 
 ![](/assets/img\posts\2020-12-31-RenderThreadJobification\CPUCoresSubdivision_Scheme.jpg){:.postImg}
 
-Physical CPU threads can be mapped to specific elements of our thread pool.\\
-The core 0, and so the relative thread, can be reserved to simulation (gameplay) jobs.\\
-Other jobs like render and audio can be executed by medium priority threads and so by core 1, 2 and 3.\\
-Lower priority threads, e.g. async loading or http request can take thread 5.\\
+Physical CPU threads can be mapped to specific elements of our thread pool.  
+The core 0, and so the relative thread, can be reserved to simulation (gameplay) jobs.  
+Other jobs like render and audio can be executed by medium priority threads and so by core 1, 2 and 3.  
+Lower priority threads, e.g. async loading or http request can take thread 5.  
 Still we need to consider that some cores, especially on consoles (e.g. XBox 1), can be reserved to the OS and so they are excluded from programmer usage.
 
 >Note: The standard thread libraries tend to leave the hardware thread mapping to the thread scheduler, which is supposed to optimize the execution of tasks by itself, without intervention from the programmer.
@@ -235,16 +235,16 @@ Synchronization Points are special kinds of jobs that will execute every frame, 
 
 ## Render Proxy Objects
 
-Engines like Unreal store static information about each scene object relevant for the renderer.\\
-This is made so we can divide game mechanics, happening in game thread, from rendering, happening in the render thread.\\
+Engines like Unreal store static information about each scene object relevant for the renderer.  
+This is made so we can divide game mechanics, happening in game thread, from rendering, happening in the render thread.  
 These static information objects are called **Render Proxies**.
 
-Render proxies are different from the scene objects they represent: they are much smaller in size and they contain only the relevant information of the object for being rendered.\\
+Render proxies are different from the scene objects they represent: they are much smaller in size and they contain only the relevant information of the object for being rendered.  
 The fundamental detail of these proxies is that their full ownership belongs to the render thread: only the render thread can edit the proxy, meanwhile the game thread will have exclusive edit capabilities of the scene object.
 
 ![](/assets/img\posts\2020-12-31-RenderThreadJobification\RenderProxy_Scheme.jpg){:.postImg}
 
-Proxies will reference all and only the relevant data to render game objects, but at each frame their update will consist only in dynamic data: things like world transform, skinning transforms, dynamic variables are changed on a frame basis.\\
+Proxies will reference all and only the relevant data to render game objects, but at each frame their update will consist only in dynamic data: things like world transform, skinning transforms, dynamic variables are changed on a frame basis.  
 On the other hand, references to meshes and materials (for example) will never change and can be treated as read-only information.
 
 >Note: Visibility stage will determine what proxies to create or enable or update for the current frame!
@@ -253,9 +253,9 @@ Proxy objects allow to organize operations on a **data-driven workflow** : rathe
 
 ## Pass Job Pipeline
 
-Using UE4 terminology, each render feature corresponds to one or more **Render Passes**.\\
-Examples of render passes are Compute volumetric clouds, fill GBuffers or Render Sky Light.\\
-In this context, a render pass is nothing else than a set of jobs.\\
+Using UE4 terminology, each render feature corresponds to one or more **Render Passes**.  
+Examples of render passes are Compute volumetric clouds, fill GBuffers or Render Sky Light.  
+In this context, a render pass is nothing else than a set of jobs.  
 On simulation thread side the following will happen:
 
 1. Let simulation finish for current frame and lock it.
@@ -272,7 +272,7 @@ On the next frame, the render jobs will do the following:
 
 ![](/assets/img\posts\2020-12-31-RenderThreadJobification\ModernConsecutiveFramesWork_Scheme.jpg){:.postImg}
 
-In this pattern, draw commands are generated on a per-frame basis, and they are discarded when the frame finishes executing. In this way objects can be allocated in a ring buffer and circularly overridden upon computing the next frames.\\
+In this pattern, draw commands are generated on a per-frame basis, and they are discarded when the frame finishes executing. In this way objects can be allocated in a ring buffer and circularly overridden upon computing the next frames.  
 Each per-frame data is a **Frame Packet**.
 
 Further optimization involves detecting static objects that we know are not changing draw commands upon different frames: in such cases we can cache the draw commands and just copy them over to the next frame.
@@ -281,7 +281,7 @@ Further optimization involves detecting static objects that we know are not chan
 
 There are already a number of job system examples on the internet, for example [the one from WickedEngine](https://wickedengine.net/2018/11/24/simple-job-system-using-standard-c/), or a more recent [thread pool from github](https://github.com/Fdhvdu/ThreadPool).
 
-The implementation I will personally choose for my engine is based on the [presentation by Sean Parent](https://www.youtube.com/watch?v=zULU6Hhp42w) to implement a thread pool. This presentation inspired more thread pools found on the internet, such as the one in [vorbrodt blog](https://vorbrodt.blog/2019/02/27/advanced-thread-pool/). I have chosen that for its approach to limit the use of atomic primitives because identified as the usual bottleneck in a thread pool system.\\
+The implementation I will personally choose for my engine is based on the [presentation by Sean Parent](https://www.youtube.com/watch?v=zULU6Hhp42w) to implement a thread pool. This presentation inspired more thread pools found on the internet, such as the one in [vorbrodt blog](https://vorbrodt.blog/2019/02/27/advanced-thread-pool/). I have chosen that for its approach to limit the use of atomic primitives because identified as the usual bottleneck in a thread pool system.  
 All the job system implementations (more or less) make use of the thread tools of the standard library, available from C++11 and later versions.
 
 ### Threads
@@ -301,10 +301,10 @@ It is important to state that the passed arguments for the function get copied i
 
 The parameter-passing semantics of the std::thread are similar to **std::bind** a function that will be used later on when talking about std::packaged\_task.
 
-Once the thread has started, we can call [**join()**](https://en.cppreference.com/w/cpp/thread/thread/join) to generate a stall to wait for it to finish execution.\\
-We can call [**detach()**](https://en.cppreference.com/w/cpp/thread/thread/detach) on a std::thread which will cause the thread to run in the background and to be handled exclusively by the C++ runtime library.\\
-From the moment detach() gets called, it will be impossible for the user programmer to retrieve the corresponding thread object again, including using relative operations such as join().\\
-This mechanic can come useful in situations like closing the application but still wanting the ongoing tasks to finish.\\
+Once the thread has started, we can call [**join()**](https://en.cppreference.com/w/cpp/thread/thread/join) to generate a stall to wait for it to finish execution.  
+We can call [**detach()**](https://en.cppreference.com/w/cpp/thread/thread/detach) on a std::thread which will cause the thread to run in the background and to be handled exclusively by the C++ runtime library.  
+From the moment detach() gets called, it will be impossible for the user programmer to retrieve the corresponding thread object again, including using relative operations such as join().  
+This mechanic can come useful in situations like closing the application but still wanting the ongoing tasks to finish.  
 In such a case we can either call join() effectively stalling the application upon closure, or we can call detach() instead so the application will close immediately and the ongoing tasks will still run in the background, hopefully finishing in a sensible amount of time.
 
 >Note: A general opinion is that threads running after main ends is extremely dangerous and toxic. Calling detach() is something that should not be taken lightly and reserved only in specific cases and only when the programmer knows exactly what they are going (which corresponds to the 1% of the cases).
@@ -319,7 +319,7 @@ We can ensure a thread gets joined by using a [**Resource Acquisition Is Initial
 }
 ```
 
-Another quite common function that we see from a thread object is the yeld() function. This function sends a &quot;hint&quot; to the thread scheduler saying that at the moment, the thread is not doing anything particular and can be taken to compute something else.\\
+Another quite common function that we see from a thread object is the yeld() function. This function sends a &quot;hint&quot; to the thread scheduler saying that at the moment, the thread is not doing anything particular and can be taken to compute something else.  
 The common use case for yeld() is on a waiting or countdown loop.
 ```cpp
  while(true) {
@@ -333,8 +333,10 @@ To have an idea of the available hardware threads for our application we can cal
 
 ### Futures
 
-Future and Promise are the two separate sides of a single asynchronous operation and they were introduced in C++11.\\
-Given a function that returns a type T, we can create an object with the [template std::future\<T\>](https://en.cppreference.com/w/cpp/thread/future) that represents the returned value of our function when it finishes executing.\\
+We can use Future objects (since C++11) as a form of communication between tasks.  
+Conceptually speaking, it is like slicing a function from its result, where the Future object represents the result, appearing some time later.  
+ 
+Given a function that returns a type T, we can create an object with the [template std::future\<T\>](https://en.cppreference.com/w/cpp/thread/future) that represents the returned value of our function when it finishes executing.  
 Such value can be retrieved by calling **get()** from the future object, which effectively stalls the program until the referenced function finishes executing.
 
 ```cpp
@@ -348,14 +350,20 @@ std::future<void> onAsyncFuncEnds = futureValue.then([](std::future<uint32_t> in
 onAsyncFuncEnds.wait();
 ```
 
-We can use [the type std::async](https://en.cppreference.com/w/cpp/thread/async) by itself (without creating a thread) as the most convenient and direct way to execute an asynchronous task, as it returns a future object.\\
-The downside of it is that we have very little control on the execution: we cannot be sure if the function gets executed serially or in another thread.\\
+We can use [the type std::async](https://en.cppreference.com/w/cpp/thread/async) by itself (without creating a thread) as the most convenient and direct way to execute an asynchronous task, as it returns a future object.  
+The downside of it is that we have very little control on the execution: we cannot be sure if the function gets executed serially or in another thread.  
 Blocking on std::future.get() has two problems:
 
 - One thread resource is consumed, increasing contention. it can cause deadlocks: if we have a single task queue available (like a single-threaded system), and task A generates and enqueues a second task B, task A waits on a get() but it will stall the entire thread and the task B will never execute.
 - Any subsequent non-dependent calculations on the task are also blocked.
 
 >Note: To prevent deadlocks, never use std::future.get() or std::future.wait() when the produced task will be executed on the same task queue as the originating code.
+
+The current C++ standard library does Not include two very useful concepts tied to Futures, taken from [Sean Parent's Concurrency](https://www.youtube.com/watch?v=zULU6Hhp42w):
+- **Continuation**: available in boost library [future::then()](https://www.boost.org/doc/libs/1_55_0/doc/html/thread/synchronization.html#thread.synchronization.futures.reference.unique_future.then) with the member function, allows to start another task when the future state object is ready.
+- **Task Joins**: when a set of tasks ends (at some point in time) then start another task, without blockings. This is achieved by taking count of the routines that still need to finish, and then when we reach 0, execute the remaining operation. An example of this can be found with the function from boost library [when_all](https://www.boost.org/doc/libs/1_68_0/libs/fiber/doc/html/fiber/when_any.html).
+
+- **Task Split**: when a task ends then start a series of parallel tasks (without using blocking mechanics).
 
 ### Packaged Tasks
 
@@ -408,12 +416,12 @@ int main(){
 ```
 >Note: the shared state between a promise and a future lives until the last object is destroyed, meaning that if a promise gets destroyed, we can still retrieve the value from the associated future.
 
-If the promise object get destroyed before calling set\_value(), the corresponding future object will generate an std::broken\_promise exception when trying to get the value.\\
+If the promise object get destroyed before calling set\_value(), the corresponding future object will generate an std::broken\_promise exception when trying to get the value.  
 Still, we can use promise objects to handle async tasks at the lowest level.
 
 ### Atomic Variables
 
-Atomic variables in C++ are almost always a way to indicate objects of [templated type std::atomic](https://en.cppreference.com/w/cpp/atomic/atomic), a type for which multiple threads can edit it without raising undefined behavior.\\
+Atomic variables in C++ are almost always a way to indicate objects of [templated type std::atomic](https://en.cppreference.com/w/cpp/atomic/atomic), a type for which multiple threads can edit it without raising undefined behavior.  
 Preventing undefined behavior in this context means to prevent data race conditions, so that all the read and write operations are executed in a specific sequential order.
 ```cpp
 std::atomic<uint64_t> lastFinishedTaskNum;
@@ -449,19 +457,23 @@ When the first thread is ready to handle the loaded data, it will call **wait on
 1. Release the acquired lock.
 2. Put the thread to sleep up until the condition on the wait gets satisfied.
 
+>Note: the condition on the condition variable is totally optional. It will make the thread to loop until the condition is satisfied, but we can use the condition variable without it!
+
 Then the second thread will load the data, and acquire the lock.  
 When it succeeds, it will set the variable for the condition (in this case isDataLoaded) to true, and finally calls `notify_one` on the condition variable.  
 This last action has the following effects
 1. Wakes up a single thread waiting on the condition variable.
+2. The woken up thread will attempt to re-acquire the lock and continue execution from where it was waiting.
 
 >Note: the notify will Not release the lock! We need to manually release it or we need to wait for that lock to release itself (e.g. going out of scope)!
 
 Calling the [function notify\_one()](http://www.cplusplus.com/reference/condition_variable/condition_variable/notify_one/) on the condition variable will signal a single thread waiting for such condition, while calling [notify\_all()](https://en.cppreference.com/w/cpp/thread/condition_variable/notify_all) will notify all of them.
+It is important to note than when calling notify, if the woken up thread will find the condition to not be satisfied, it will turn back to sleep.
 
 ### Platform Specific Tools
 
-The operative system can also give a number of functionalities for multithreading which can get closer to hardware.\\
-I will just briefly mention the \&lt;Windows.h\&gt; library, that among other things, it allows to state a thread (but also an entire process) **Affinity Mask** , to decide what physical core will execute each of our threads.\\
+The operative system can also give a number of functionalities for multithreading which can get closer to hardware.  
+I will just briefly mention the \&lt;Windows.h\&gt; library, that among other things, it allows to state a thread (but also an entire process) **Affinity Mask** , to decide what physical core will execute each of our threads.  
 The following code assigns one thread per core (credit to [this stackoverflow thread](https://stackoverflow.com/questions/56486588/setting-thread-affinity-of-stdthreads)):
 ```cpp
 std::vector<std::thread> threads;
@@ -478,9 +490,17 @@ std::vector<std::thread> threads;
 
 ### Profile Parallelization
 
+For Windows Visual Studio environment, I recommend trying out [Concurrency Visualizer](https://docs.microsoft.com/en-us/visualstudio/profiling/concurrency-visualizer?view=vs-2019), an extension that plots information about thread activity.  
+
+![](/assets\img\posts\2020-12-31-RenderThreadJobification\ConcurrencyVisualizer.jpg){:.postImg}
+
+Concurrency Visualizer also supports using markers via the [Event Tracing for Windows (ETW)](https://docs.microsoft.com/en-us/windows/win32/etw/event-tracing-portal).  
+You can read an introductory guide also from [Paul Freedman's Blog](https://medium.com/@paul.freedman19/gaining-intuition-on-multi-threading-with-visual-studio-concurrency-visualizer-40414548de7c).
+
 Other than the classic Visual Studio integrated tools, at the time of writing this post the most recommended tool to debug parallel code in both Windows and Linux is the [Intel VTune Profiler](https://software.intel.com/content/www/us/en/develop/tools/oneapi/components/vtune-profiler.html).
 
 Vtune is ofcourse specialized in Intel CPUs but it also supports AMD ones.
+
 
 # Sources
 
@@ -526,3 +546,9 @@ Vtune is ofcourse specialized in Intel CPUs but it also supports AMD ones.
 
 - Locks and Condition Variables - CS 140 - Stanford University  
 [https://web.stanford.edu/~ouster/cgi-bin/cs140-spring14/lecture.php?topic=locks](https://web.stanford.edu/~ouster/cgi-bin/cs140-spring14/lecture.php?topic=locks)
+
+- Paul Freedman - Gaining Intuition on Multi-Threading  
+[https://medium.com/@paul.freedman19/gaining-intuition-on-multi-threading-with-visual-studio-concurrency-visualizer-40414548de7c](https://medium.com/@paul.freedman19/gaining-intuition-on-multi-threading-with-visual-studio-concurrency-visualizer-40414548de7c)
+
+- C++ Concurrency In Action - Anthony Williams  
+[https://www.manning.com/books/c-plus-plus-concurrency-in-action-second-edition](https://www.manning.com/books/c-plus-plus-concurrency-in-action-second-edition)
