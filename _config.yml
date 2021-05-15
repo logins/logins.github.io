@@ -11,4 +11,6 @@ linkedin_name: Riccardo Loggini
 
 theme: jekyll-theme-minimal
 
+pygments_theme: friendly
+
 exclude: /_drafts/excluded/
