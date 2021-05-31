@@ -161,6 +161,14 @@ MyFirstFeatureOutput& firstFeatOutput = GraphBuilder::GetFeatureOutput<MyFirstFe
 
 MyPassParameterStruct.ShaderResources.add(firstFeatOutput.MyFirstOutput);
 ```
+Another solution, like the one adopted by UE4, is retrieving resources from the graph by hashed string.
+```cpp
+ResourceRef sceneColor = GraphBuilder::GetOrCreateResource("SceneColor");
+
+MyPassParameterStruct.ShaderResources.add(sceneColor);
+```
+Of course this method is less safe, because we rely on knowing what string will be used for what resource in another pass.  
+On the other hand, this approach can be more flexible as we do not expect the output of a specifc pass, but just a named resource which, if not used before, will be created on the spot.
 
 ## Setup Phase
 
