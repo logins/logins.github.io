@@ -57,7 +57,7 @@ The compute pipeline states the following definitions:
   - **SV\_DispatchThreadID** (uint3) the global thread offset within the dispatch call across three dimensions.\\
  `SV_DispatchThreadID =(SV_GroupID⋅NumThreadsPerGroup)+SV_GroupThreadID`
 
-  - **SV\_GroupIndex** (uint) flattened array index version of the SV\_GroupID.\\
+  - **SV\_GroupIndex** (uint) flattened array index version of the SV\_GroupThreadID.\\
  `SV_GroupIndex = SV_GroupThreadID.z * NumThreadsPerGroup.y *NumThreadsPerGroup.x + SV_GroupThreadID.y*NumThreadsPerGroup.x + 
 SV_GroupThreadID.x`
 
