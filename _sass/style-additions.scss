@@ -27,6 +27,14 @@
     fill: #0077B5;
   }
 
+  .icon.icon--twitter:hover, .icon.icon--twitter:focus {
+    fill: #3BA9EE;
+  }
+
+  .icon.icon--github:hover, .icon.icon--github:focus {
+    fill: #AC5C51;
+  }
+
   .wrapperPost {
     max-width:860px; /*Total page width*/
     margin:0 auto;
