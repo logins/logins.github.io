@@ -13,7 +13,7 @@ def generate_mapping_data(image_width):
     face_edge_size = out_tex_width / 4
 
     # Create our numpy arrays
-    out_uv = numpy.zeros((out_tex_height, out_tex_width, 2), dtype="f4")
+    out_mapping = numpy.zeros((out_tex_height, out_tex_width, 2), dtype="f4")
     xyz = numpy.zeros((out_tex_height * out_tex_width // 2, 3), dtype="f4")
     vals = numpy.zeros((out_tex_height * out_tex_width // 2, 3), dtype="i4")
 
@@ -96,10 +96,10 @@ def generate_mapping_data(image_width):
     uf = 4.0 * face_edge_size * phi / (2.0 * pi) % out_tex_width
     vf = 2.0 * face_edge_size * theta / pi
     
-    out_uv[col_pix_range, col_idx, 0] = uf
-    out_uv[col_pix_range, col_idx, 1] = vf
+    out_mapping[col_pix_range, col_idx, 0] = uf
+    out_mapping[col_pix_range, col_idx, 1] = vf
     
-    return out_uv[:, :, 0], out_uv[:, :, 1]
+    return out_mapping[:, :, 0], out_mapping[:, :, 1]
 
 imgIn = Image.open(sys.argv[1])
 inSize = imgIn.size

@@ -276,7 +276,7 @@ my_array = numpy.zeros(<array shape>, dtype=<data type>)
 ```
 for example
 ```python
-out_uv = numpy.zeros((1024, 768, 2), dtype="f4")
+out_mapping = numpy.zeros((1024, 768, 2), dtype="f4")
 ```
 will be an array containing floats, having 3 dimensions statically sized as 1024, 768 and 2.
 
@@ -349,9 +349,9 @@ imgOut.show()
 
 ## Generate Mapping Data
 
-All the main logic of this process is focused on generating mapping data (in form of u,v coordinates).
+All the main logic of this process is focused on generating mapping data (in form of texel x,y coordinates).
 
-The focus is to reconstruct, for each texel of the output image, the uv-coordinates used to sample the input texture and retrieve the corresponding colour value.
+The focus is to reconstruct, for each texel of the output image, the xy-coordinates used to sample the input texture and retrieve the corresponding colour value.
 
   
 
@@ -367,7 +367,7 @@ def generate_mapping_data(image_width):
     face_edge_size = out_tex_width / 4
 
     # Create our numpy arrays
-    out_uv = numpy.zeros((out_tex_height, out_tex_width, 2), dtype="f4")
+    out_mapping = numpy.zeros((out_tex_height, out_tex_width, 2), dtype="f4")
     xyz = numpy.zeros((out_tex_height * out_tex_width // 2, 3), dtype="f4")
     vals = numpy.zeros((out_tex_height * out_tex_width // 2, 3), dtype="i4")
 
@@ -492,10 +492,10 @@ When we have polar coordinates corresponding to the points on the cube, the last
     uf = 4.0 * face_edge_size * phi / (2.0 * pi) % out_tex_width
     vf = 2.0 * face_edge_size * theta / pi
     
-    out_uv[col_pix_range, col_idx, 0] = uf
-    out_uv[col_pix_range, col_idx, 1] = vf
+    out_mapping[col_pix_range, col_idx, 0] = uf
+    out_mapping[col_pix_range, col_idx, 1] = vf
     
-    return out_uv[:, :, 0], out_uv[:, :, 1]
+    return out_mapping[:, :, 0], out_mapping[:, :, 1]
 ```
 
 ## Wrapping All Up
