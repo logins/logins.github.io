@@ -52,8 +52,8 @@ As listed before, a number of graphics applications use CUDA in their computatio
 ### CUDA's limitations
 The core limitation, as anticipated before, is that CUDA only runs on NVIDIA GPUs. Code written against it cannot run on AMD, Intel, or mobile GPUs without a translation layer or a rewrite.\
 On top of that, there are factors including cost, architecture fragmentation and sub-optimal Api architecture decisions.
-- **Architecture fragmentation.** Compute capability differs across GPU generations (`sm_75`, `sm_86`, `sm_89`, `sm_90`, ...), so shipping code either targets specific architectures at compile time or falls back to [PTX JIT-compilation][jit-vitalitylearning] at runtime — a versioning concern a fixed-ISA target like a CPU doesn't have.
-- **Low-level responsibility.** Manual memory management, explicit shared-memory tiling, and hand-tuning occupancy/register pressure are all on you — this is the same trade-off as HLSL vs. a higher-level engine abstraction, just one level lower. (More on how Triton addresses this below.)
+- **Architecture fragmentation.** Compute capability differs across GPU generations (`sm_75`, `sm_86`, `sm_89`, `sm_90`, ...), so shipping code either targets specific architectures at compile time or falls back to [PTX JIT-compilation][jit-vitalitylearning] at runtime (a versioning concern a fixed-ISA target like a CPU doesn't have).
+- **Low-level responsibility.** Manual memory management, explicit shared-memory tiling, and hand-tuning occupancy/register pressure are all on you: this is the same trade-off as HLSL vs. a higher-level engine abstraction, just one level lower. (More on how Triton addresses this below.)
 - **Cost and availability.** part of the price tag on NVIDIA's data-center GPUs isn't there because the silicon itself is worth that much more than a competitor's chip. It's there because **CUDA's ecosystem** lock-in lets NVIDIA charge more than pure hardware competition would allow, and people still pay it rather than deal with the cost of switching to something cheaper. Cloud GPU capacity on NVIDIA hardware is also routinely supply-constrained.
 
 ### OpenCL
@@ -61,32 +61,33 @@ On top of that, there are factors including cost, architecture fragmentation and
 [OpenCL][opencl] is the original cross-vendor answer to CUDA: running across GPUs, CPUs, and even [Field-Programmable Gate Arrays (FPGAs)](https://www.softserveinc.com/en-us/blog/fpga-development-using-opencl) and [Digital Signal Processors (DSPs)](https://www.thegoodpenguin.co.uk/blog/introduction-to-opencl-on-embedded-systems/). OpenCL 3.1 shipped in 2026 with mandatory SPIR-V ingestion, and layered implementations now run OpenCL over Vulkan and D3D12, widening availability even to platforms without a native driver.
 
 - **Pros:** genuinely vendor-neutral: open standard with public conformance testing, can target the widest range of hardware of anything in this list.
-- **Cons:** NVIDIA treats OpenCL as a compliance checkbox rather than a first-class target — it ships a conformant driver but doesn't invest in it the way it does CUDA, so performance on NVIDIA hardware specifically tends to lag. OpenCL's actual center of gravity today has shifted toward mobile and embedded (Arm, Imagination, Qualcomm), not data-center GPU compute. There's no equivalent to cuBLAS/cuDNN-level library maturity, and the API itself is considerably more verbose and lower-level than CUDA's runtime API — explicit platform/device/context/queue setup for even a simple kernel launch. In practice, most people today reach OpenCL indirectly, through a higher-level layer like SYCL, rather than writing it by hand.
+- **Cons:** NVIDIA treats OpenCL as a compliance checkbox rather than a first-class target. It ships a conformant driver but doesn't invest in it the way it does CUDA, so performance on NVIDIA hardware specifically tends to lag. OpenCL's actual center of gravity today has shifted toward mobile and embedded (Arm, Imagination, Qualcomm), not data-center GPU compute. There's no equivalent to cuBLAS/cuDNN-level library maturity, and the API itself is considerably more verbose and lower-level than CUDA's runtime API. Explicit platform/device/context/queue setup for even a simple kernel launch. In practice, most people today reach OpenCL indirectly, through a higher-level layer like [SYCL][sycl], rather than writing it by hand.
 
 ### HIP / ROCm (AMD)
 
-AMD's answer, deliberately designed to look like CUDA: the `HIPify` tool auto-converts large amounts of existing CUDA source, and `hipcc` can even compile HIP to run on NVIDIA hardware by wrapping CUDA underneath, giving a degree of two-way portability.
+[HIP (Heterogeneous-Compute Interface for Portability)][hip] and [ROCm (Radeon Open Compute)][rocm]. AMD's answer, deliberately designed to look like CUDA: the `HIPify` tool auto-converts large amounts of existing CUDA source, and `hipcc` can even compile HIP to run on NVIDIA hardware by wrapping CUDA underneath, giving a degree of two-way portability.
 
 - **Pros:** the lowest-friction migration path if you already have CUDA code and want AMD hardware support; open source.
-- **Cons:** ROCm's tooling and library ecosystem is younger and less battle-tested than CUDA's, with a history of rougher Windows support (improving, but real). And because HIP mirrors CUDA so closely, it doesn't raise the abstraction level at all — you're still responsible for the same manual tiling and memory management, just retargeted.
+- **Cons:** ROCm's tooling and library ecosystem is younger and less battle-tested than CUDA's, with a history of rougher Windows support (improving, but real). And because HIP mirrors CUDA so closely, it doesn't raise the abstraction level at all. You're still responsible for the same manual tiling and memory management, just retargeted.
 
 ### SYCL
 
-Khronos' modern single-source C++ model for heterogeneous compute (implemented via Intel's oneAPI/DPC++, AdaptiveCpp, and others), able to target CPUs and GPUs from multiple vendors by compiling down to CUDA, HIP, Level Zero, or OpenCL depending on backend.
+[SYCL][sycl] is Khronos' modern single-source C++ model for heterogeneous compute (implemented via Intel's oneAPI/DPC++, AdaptiveCpp, and others), able to target CPUs and GPUs from multiple vendors by compiling down to CUDA, HIP, Level Zero, or OpenCL depending on backend.
 
-- **Pros:** standard, modern C++ — templates, lambdas, no special language extensions the way CUDA/HLSL need; genuinely portable across hardware vendors from a single source tree.
-- **Cons:** the ecosystem and tooling are still maturing relative to CUDA's; performance portability — getting genuinely competitive performance across every backend from one source — remains a real, unsolved-in-general problem, not just a marketing claim.
+- **Pros:** standard, modern C++ — templates, lambdas, no special language extensions the way CUDA/HLSL need. Genuinely portable across hardware vendors from a single source tree.
+- **Cons:** the ecosystem and tooling are still maturing relative to CUDA's. Performance portability is alwats tricky to achieve. Getting genuinely competitive performance across every backend from one source remains a real, generally unsolved problem, not just a marketing claim.
 
 ### Triton
 
-The one most relevant to where GPU-compute hiring is actually heading right now. Triton is a Python-embedded language (`@triton.jit`-decorated functions) where you reason about block-level tiles rather than individual threads — the compiler automatically handles memory coalescing, shared-memory allocation, and thread scheduling underneath. It compiles through an MLIR-based pipeline down to PTX for NVIDIA or AMDGCN for AMD.
+[Triton][triton] is where GPU-compute hiring in the job market is actually heading right now. Triton is a Python-embedded language (`@triton.jit`-decorated functions) where you reason about block-level tiles rather than individual threads. The compiler automatically handles memory coalescing, shared-memory allocation, and thread scheduling underneath. It compiles through an [MLIR-based pipeline][mlir] down to PTX for NVIDIA or AMDGCN for AMD.
 
-- **Pros:** dramatically less code than hand-written CUDA for common kernel shapes (matmul, fused elementwise ops, attention), while still getting PTX that competes with hand-tuned CUDA — FlashAttention ships an official Triton reference implementation alongside its hand-tuned CUDA kernel. It's the default kernel-generation backend for PyTorch 2.x's `torch.compile`, and vLLM's attention backends (PagedAttention, RoPE, RMSNorm) are written in it. AMD support has matured quickly too (ROCm 6.2+, covering both CDNA data-center and increasingly RDNA consumer GPUs). Even NVIDIA is investing in it directly — a CUDA Tile IR backend for Triton, targeting Blackwell's tensor cores, was announced in early 2026.
-- **Cons:** minimum NVIDIA compute capability is 8.0 (Ampere and newer — Volta/Turing, e.g. V100/T4, aren't supported); you give up the fine-grained control needed to hand-optimize the last few percent of performance; and it's tuned primarily for the access patterns common in ML kernels (block-structured matmul, reductions, fused elementwise ops) rather than arbitrary general-purpose kernels a graphics engineer might reach for. It's also conceptually still Python/ML-ecosystem-shaped, not a general systems language the way CUDA C++ or HIP are.
+- **Pros:** dramatically less code than hand-written CUDA for common kernel shapes (matmul, fused elementwise ops, attention), while still getting PTX that competes with hand-tuned CUDA. [FlashAttention](https://flashattention.org/), for example, ships an official Triton reference implementation alongside its hand-tuned CUDA kernel. It's the default kernel-generation backend for PyTorch 2.x's `torch.compile`, and vLLM's attention backends (PagedAttention, RoPE, RMSNorm) are written in it. AMD support has matured quickly too (ROCm 6.2+, covering both CDNA data-center and increasingly RDNA consumer GPUs). Even NVIDIA is investing in it directly — a CUDA Tile IR backend for Triton, targeting Blackwell's tensor cores, was announced in early 2026.
+- **Cons:** minimum NVIDIA compute capability is 8.0 (Ampere and newer — Volta/Turing, e.g. V100/T4, aren't supported). You'll need to give up the fine-grained control needed to hand-optimize the last few percent of performance, and it's tuned primarily for the access patterns common in ML kernels (block-structured matmul, reductions, fused elementwise ops) rather than arbitrary general-purpose kernels a graphics engineer might reach for. It's also conceptually still Python/ML-ecosystem-shaped, not a general systems language the way CUDA C++ or HIP are.
 
-### Where this leaves you
+### What's best then
 
-If cross-vendor portability is the hard requirement, HIP is the least-friction path if you're starting from CUDA, SYCL if you want to start clean in modern C++. If you're specifically aiming at the ML/AI-infra hiring direction discussed earlier in this series, Triton is arguably more relevant to learn *alongside* CUDA than as a replacement for it — it's rapidly becoming the productivity layer the industry writes kernels in day to day, with raw CUDA reserved for the cases where Triton's abstraction doesn't fit.
+If you're specifically aiming at the ML/AI-infra job direction discussed earlier in this series, Triton is arguably more relevant to learn *alongside* CUDA than as a replacement for it. It's rapidly becoming the productivity layer the industry writes kernels in day to day, with raw CUDA reserved for the cases where Triton's abstraction doesn't fit.\
+If cross-vendor portability is the hard requirement, HIP is the least-friction path if you're starting from CUDA, otherwise SYCL if you want to start clean in modern C++.
 
 # Terminology
 // TODO
@@ -131,3 +132,8 @@ TODO
 [jit-vitalitylearning]: https://vitalitylearning.medium.com/working-out-cuda-just-in-time-jit-compilation-d93eeaeb0118
 [ngx-docs]: https://docs.nvidia.com/ngx/ngx-archived/ngx-100/programming-guide/index.html
 [omniverse]: https://developer.nvidia.com/omniverse
+[sycl]: https://sycl.tech/
+[hip]: https://rocm.docs.amd.com/projects/HIP/en/latest/what_is_hip.html
+[rocm]: https://github.com/ROCm
+[triton]: https://triton-lang.org/main/index.html
+[mlir]: https://mlir.llvm.org/
