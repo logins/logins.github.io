@@ -127,15 +127,17 @@ A CUDA-capable chip is partitioned into **GPCs** (Graphics Processing Clusters),
 The SM is the real unit of scheduling: when a kernel launches, the hardware scheduler assigns each block from the grid to exactly one SM, where it stays resident for its entire lifetime, sharing that SM's resources with however many other blocks fit alongside it.
 
 Each SM packs:
-- **CUDA cores** — the scalar FP32/INT32 ALUs that execute the bulk of ordinary kernel code.
-- **Tensor Cores** — fixed-function matrix multiply-accumulate units, the hardware DLSS's NGX SDK drives underneath (see the AI-driven image reconstruction bullet earlier).
-- **Warp schedulers** — issue instructions to **warps**, groups of 32 threads that execute in lockstep on the SM's ALUs. `blockDim` threads get sliced into warps of 32 under the hood regardless of how you shaped `numthreads`/`blockDim` — this is the actual SIMT execution granularity, one level below the logical thread/block model from the Terminology section above.
-- **Register file and L1/shared memory** — the fast, on-chip storage partitioned among the warps and blocks resident on that SM (more below).
-- **Special Function Units (SFUs) and load/store units** — transcendental math (`sin`, `rsqrt`, ...) and memory-access plumbing, respectively.
+- **CUDA cores**: the scalar FP32/INT32 ALUs that execute the bulk of ordinary kernel code.
+- **Tensor Cores**: fixed-function matrix multiply-accumulate units, the hardware DLSS's NGX SDK drives underneath (see the AI-driven image reconstruction bullet earlier).
+- **Warp schedulers**: issue instructions to **warps**, groups of 32 threads that execute in lockstep on the SM's ALUs. `blockDim` threads get sliced into warps of 32 under the hood regardless of how you shaped `numthreads`/`blockDim`: this is the actual SIMT execution granularity, one level below the logical thread/block model from the Terminology section above.
+- **Register file and L1/shared memory**: the fast, on-chip storage partitioned among the warps and blocks resident on that SM (more below).
+- **Special Function Units (SFUs) and load/store units**: transcendental math (`sin`, `rsqrt`, ...) and memory-access plumbing, respectively.
 
 ![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaComputeHierarchy_Scheme.svg){:.postImg}
 
-Because a block is pinned to one SM, `blockDim` doesn't just describe your problem's shape: it directly determines how many warps a block occupies, and therefore how many blocks can fit on an SM at once. Threads within a warp that take different branches (an `if` some threads enter and others skip) don't run in parallel — the warp serializes both paths and masks off the inactive threads, the closest CUDA equivalent to a compute shader's wave/subgroup divergence cost.
+Because a block is pinned to one SM, `blockDim` doesn't just describe your problem's shape: it directly determines how many warps a block occupies, and therefore how many blocks can fit on an SM at once. Threads within a warp that take different branches (an `if` some threads enter and others skip) don't run in parallel: the warp serializes both paths and masks off the inactive threads, the closest CUDA equivalent to a compute shader's wave/subgroup divergence cost.
+
+For example, NVIDIA RTX 5090 architecture has 11 GPCs holding 170 SMs in total, each SM packing 128 CUDA cores and 4 Tensor Cores (21,760 CUDA cores and 680 Tensor Cores across the whole chip), with 4 warp schedulers per SM keeping up to 48 resident warps, 1,536 threads, in flight at once. Each SM also carries a 64K-entry (256 KB) register file and up to 128 KB of L1/shared memory: the exact pool `blockDim` and `__shared__` allocations are drawn from, and the numbers occupancy calculations divide against. ([source][blackwell-tuning-guide])
 
 ## Memory Hierarchy
 
@@ -150,6 +152,8 @@ Every level of the compute hierarchy above has a matching memory tier, and the t
 
 Two more special-purpose paths worth knowing: **constant memory**, a small cached region for read-only values broadcast to every thread (the closest CUDA relative of a constant/uniform buffer), and **texture memory**, which routes reads through the GPU's dedicated texture units — the same fixed-function hardware a pixel shader's `Sample()` call hits, still reachable from a kernel via a `cudaTextureObject_t` when its 2D-locality caching or built-in filtering is useful. `local memory` is the odd one out: despite the name, it isn't a separate fast tier, it's register-spill data that actually lives in global memory — which is why register pressure (too many live values for the register file) quietly costs you global-memory bandwidth.
 
+That same RTX 5090 backs its 170 SMs with 98 MB of L2 cache shared chip-wide, sitting in front of 32 GB of GDDR7 global memory delivering 1,792 GB/s over a 512-bit bus. Constant memory doesn't scale with the chip the way L2 and global memory do: it's a fixed CUDA architectural limit, 64 KB total, cached through an 8 KB working set per SM, on this card just as on any other. ([source][nvidia-rtx5090])
+
 ## Getting On And Off The Chip
 
 The GPU is still a peripheral: it's attached to the host system over **PCIe**, or over NVIDIA's own higher-bandwidth **NVLink** for GPU-to-GPU and, on some systems, GPU-to-CPU links — the interconnect that matters once you're doing multi-GPU work (`NCCL`). Dedicated **copy/DMA engines** move data across that link independently of the SMs, which is what makes `cudaMemcpyAsync` genuinely asynchronous: a kernel can keep computing on last frame's data while this frame's input is still in flight, the same overlap a D3D12 copy queue running alongside a direct queue gives you.
@@ -159,11 +163,11 @@ Not every specialized unit on the die is reachable from plain CUDA C++ at all: *
 ## Why This Shapes Performance
 
 Nsight Compute's per-kernel metrics all trace back to the hardware above:
-- **Occupancy** — how many warps are resident on an SM at once, capped by whichever resource runs out first: registers, shared memory allocated per block, or the SM's max warp/block count. Low occupancy means the scheduler has fewer warps to switch between when one stalls.
-- **Latency hiding** — a GPU has no CPU-style branch predictor or deep out-of-order window; it hides memory latency by parking a stalled warp and issuing another resident one instead. This is why occupancy matters: too few resident warps and the SM idles waiting on DRAM instead of hiding that wait behind other work.
-- **Memory coalescing** — when the 32 threads of a warp touch contiguous global-memory addresses, the memory controller merges them into a handful of wide transactions; scattered per-thread addresses fragment into many small ones, and bandwidth utilization drops accordingly.
-- **Shared-memory bank conflicts** — shared memory is physically split into 32 banks; when multiple threads in a warp hit the same bank in the same instruction, those accesses serialize instead of completing in one cycle.
-- **Tensor Core utilization** — hitting peak throughput needs the right data types and tile shapes (FP16/BF16/TF32/INT8, dimensions aligned to the core's native tile size); code that doesn't match falls back to CUDA cores and leaves most of the SM's matrix-multiply throughput unused.
+- **Occupancy**: how many warps are resident on an SM at once, capped by whichever resource runs out first: registers, shared memory allocated per block, or the SM's max warp/block count. Low occupancy means the scheduler has fewer warps to switch between when one stalls.
+- **Latency hiding**: a GPU has no CPU-style branch predictor or deep out-of-order window; it hides memory latency by parking a stalled warp and issuing another resident one instead. This is why occupancy matters: too few resident warps and the SM idles waiting on DRAM instead of hiding that wait behind other work.
+- **Memory coalescing**: when the 32 threads of a warp touch contiguous global-memory addresses, the memory controller merges them into a handful of wide transactions; scattered per-thread addresses fragment into many small ones, and bandwidth utilization drops accordingly.
+- **Shared-memory bank conflicts**: shared memory is physically split into 32 banks; when multiple threads in a warp hit the same bank in the same instruction, those accesses serialize instead of completing in one cycle.
+- **Tensor Core utilization**: hitting peak throughput needs the right data types and tile shapes (FP16/BF16/TF32/INT8, dimensions aligned to the core's native tile size); code that doesn't match falls back to CUDA cores and leaves most of the SM's matrix-multiply throughput unused.
 
 # Example Usage
 // TODO rewrite the cubemap generation from OpenCV to CUDA
@@ -197,3 +201,5 @@ Nsight Compute's per-kernel metrics all trace back to the hardware above:
 [rocm]: https://github.com/ROCm
 [triton]: https://triton-lang.org/main/index.html
 [mlir]: https://mlir.llvm.org/
+[blackwell-tuning-guide]: https://docs.nvidia.com/cuda/blackwell-tuning-guide/index.html
+[nvidia-rtx5090]: https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/
