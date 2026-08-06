@@ -45,7 +45,7 @@ As listed before, a number of graphics applications use CUDA in their computatio
 
 **A richer language.** CUDA is C++ which brings templates, classes, recursion, dynamic parallelism (kernels launching kernels), unified memory. HLSL is a much more constrained with C-like shading language up to ShaderModel 5.1 and some C++ from HLSL2021.
 
-**Genuinely real-time, without NGX-style special-casing.** DLSS avoids the interop cost by never crossing an API boundary at all (see above) — but there's a separate category of application that wins with CUDA at real-time or interactive rates for the opposite reason: there's no D3D12/Vulkan frame graph to bridge into in the first place, because the whole render loop is CUDA-native from the start. *Examples: interactive viewport renderers in DCC tools (Blender Cycles X, [NVIDIA Omniverse][omniverse]'s RTX Renderer, Redshift, Chaos Vantage), and video/stream AI effects that sit outside a game's frame graph entirely, like NVIDIA Broadcast or RTX Video Super Resolution.*
+**Genuinely real-time, without NGX-style special-casing.** As stated before, DLSS avoids the interop cost by never crossing an API boundary at all, but there's a separate category of application that wins with CUDA at real-time or interactive rates for the opposite reason: there's no D3D12/Vulkan frame graph to bridge into in the first place, because the whole render loop is CUDA-native from the start. *Examples: interactive viewport renderers in DCC tools (Blender Cycles X, [NVIDIA Omniverse][omniverse]'s RTX Renderer, Redshift, Chaos Vantage), and video/stream AI effects that sit outside a game's frame graph entirely, like NVIDIA Broadcast or RTX Video Super Resolution.*
 
 ## Limitations And Alternatives
 
@@ -90,7 +90,17 @@ If you're specifically aiming at the ML/AI-infra job direction discussed earlier
 If cross-vendor portability is the hard requirement, HIP is the least-friction path if you're starting from CUDA, otherwise SYCL if you want to start clean in modern C++.
 
 # Terminology
-// TODO
+The CUDA terminology is similar to HLSL but not the same.\
+// TODO give formal definition of kernel
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaHierarchy_Scheme.svg){:.postImg}
+
+A kernel launch spawns a **grid** of **blocks** — the same dispatch/group nesting a compute shader has, just with CUDA's own names for each level. Buffers passed in as plain device pointers are **global memory**, visible to every block and every thread in the grid, the same way a `RWStructuredBuffer` is visible to an entire dispatch. What's inside a single block is worth its own picture:
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaBlockDetail_Scheme.svg){:.postImg}
+
+Each block is itself a group of **threads**, indexed by `threadIdx` the way `SV_GroupThreadID` indexes a thread within a group. `groupshared` memory maps to `__shared__`: allocated per block, visible only to the threads inside that block, and fast because it's on-chip — synchronized with `__syncthreads()`, CUDA's equivalent of `GroupMemoryBarrierWithGroupSync()`.
+
 | HLSL / D3D12 compute | CUDA equivalent |
 |---|---|
 | `Dispatch(x, y, z)` | `kernel<<<gridDim, blockDim>>>(...)` |
@@ -108,7 +118,10 @@ If cross-vendor portability is the hard requirement, HIP is the least-friction p
 # Hardware
 A modern GPU packs thousands of simple cores designed for high-throughput, data-parallel work, backed by memory bandwidth far exceeding a CPU's.\
 TODO
+# Example Usage
+// TODO rewrite the cubemap generation from OpenCV to CUDA
 # Debug With Nsight
+// TODO
 ## Nsight Systems (timeline)
 //TODO
 ## Nsight Compute
