@@ -90,16 +90,19 @@ If you're specifically aiming at the ML/AI-infra job direction discussed earlier
 If cross-vendor portability is the hard requirement, HIP is the least-friction path if you're starting from CUDA, otherwise SYCL if you want to start clean in modern C++.
 
 # Terminology
-The CUDA terminology is similar to HLSL but not the same.\
-// TODO give formal definition of kernel
+The CUDA terminology is similar to HLSL but not the same.
+
+A **kernel** is a C++ function marked `__global__` that runs on the GPU. It's the direct equivalent of an HLSL compute shader's entry point, the function carrying the `[numthreads(x,y,z)]` attribute.\
+**Launching** a kernel means invoking it from host (CPU) code with the `kernel<<<gridDim, blockDim>>>(args)` syntax. This doesn't run the function once: it tells the GPU how many blocks (`gridDim`) and how many threads per block (`blockDim`) to spawn to execute that same function body in parallel, one invocation per thread, equivalent scheduling a `Dispatch(x, y, z)` call performs for a compute shader's `numthreads`-sized thread groups.
 
 ![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaHierarchy_Scheme.svg){:.postImg}
 
-A kernel launch spawns a **grid** of **blocks** — the same dispatch/group nesting a compute shader has, just with CUDA's own names for each level. Buffers passed in as plain device pointers are **global memory**, visible to every block and every thread in the grid, the same way a `RWStructuredBuffer` is visible to an entire dispatch. What's inside a single block is worth its own picture:
+A kernel launch spawns a **grid** of **blocks** — the same dispatch/group nesting a compute shader has, just with CUDA's own names for each level. Buffers passed in as plain device pointers are **global memory**, visible to every block and every thread in the grid, the same way a `RWStructuredBuffer` is visible to an entire dispatch.\
+Then inspecting a single block:
 
 ![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaBlockDetail_Scheme.svg){:.postImg}
 
-Each block is itself a group of **threads**, indexed by `threadIdx` the way `SV_GroupThreadID` indexes a thread within a group. `groupshared` memory maps to `__shared__`: allocated per block, visible only to the threads inside that block, and fast because it's on-chip — synchronized with `__syncthreads()`, CUDA's equivalent of `GroupMemoryBarrierWithGroupSync()`.
+Each block is itself a group of **threads**, indexed by `threadIdx` the way `SV_GroupThreadID` indexes a thread within a group. `groupshared` memory maps to `__shared__`: allocated per block, visible only to the threads inside that block, and fast because it's on-chip. Its state is synchronized with `__syncthreads()`, CUDA's equivalent of `GroupMemoryBarrierWithGroupSync()`.
 
 | HLSL / D3D12 compute | CUDA equivalent |
 |---|---|
@@ -116,8 +119,52 @@ Each block is itself a group of **threads**, indexed by `threadIdx` the way `SV_
 | Wave intrinsics (`WaveActiveSum`, 32-lane on NVIDIA hardware) | warp-level primitives (`__shfl_sync`, cooperative groups) — same 32-thread warp under the hood, since it's the same silicon |
 
 # Hardware
-A modern GPU packs thousands of simple cores designed for high-throughput, data-parallel work, backed by memory bandwidth far exceeding a CPU's.\
-TODO
+A modern GPU packs thousands of simple cores designed for high-throughput, data-parallel work, backed by memory bandwidth far exceeding a CPU's. Understanding where a kernel's blocks and threads actually land in silicon, and what memory they land near, explains most of the "why is my kernel slow" questions Nsight Compute exists to answer.
+
+## Compute Hierarchy: GPC → SM → Warp
+
+A CUDA-capable chip is partitioned into **GPCs** (Graphics Processing Clusters), each containing several **Streaming Multiprocessors (SMs)**.\
+The SM is the real unit of scheduling: when a kernel launches, the hardware scheduler assigns each block from the grid to exactly one SM, where it stays resident for its entire lifetime, sharing that SM's resources with however many other blocks fit alongside it.
+
+Each SM packs:
+- **CUDA cores** — the scalar FP32/INT32 ALUs that execute the bulk of ordinary kernel code.
+- **Tensor Cores** — fixed-function matrix multiply-accumulate units, the hardware DLSS's NGX SDK drives underneath (see the AI-driven image reconstruction bullet earlier).
+- **Warp schedulers** — issue instructions to **warps**, groups of 32 threads that execute in lockstep on the SM's ALUs. `blockDim` threads get sliced into warps of 32 under the hood regardless of how you shaped `numthreads`/`blockDim` — this is the actual SIMT execution granularity, one level below the logical thread/block model from the Terminology section above.
+- **Register file and L1/shared memory** — the fast, on-chip storage partitioned among the warps and blocks resident on that SM (more below).
+- **Special Function Units (SFUs) and load/store units** — transcendental math (`sin`, `rsqrt`, ...) and memory-access plumbing, respectively.
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaComputeHierarchy_Scheme.svg){:.postImg}
+
+Because a block is pinned to one SM, `blockDim` doesn't just describe your problem's shape: it directly determines how many warps a block occupies, and therefore how many blocks can fit on an SM at once. Threads within a warp that take different branches (an `if` some threads enter and others skip) don't run in parallel — the warp serializes both paths and masks off the inactive threads, the closest CUDA equivalent to a compute shader's wave/subgroup divergence cost.
+
+## Memory Hierarchy
+
+Every level of the compute hierarchy above has a matching memory tier, and the tiers get larger and slower the further they sit from the ALUs:
+
+| Tier | Scope | Relative speed |
+|---|---|---|
+| **Registers** | per-thread | fastest, smallest |
+| **Shared memory / L1** | per-block, lives on the owning SM | fast, on-chip — this is `__shared__` / `groupshared` |
+| **L2 cache** | chip-wide, shared by every SM | slower than L1, still on-chip |
+| **Global memory (DRAM)** | entire grid, every kernel | slowest, largest — the off-chip GDDR/HBM behind every plain device pointer |
+
+Two more special-purpose paths worth knowing: **constant memory**, a small cached region for read-only values broadcast to every thread (the closest CUDA relative of a constant/uniform buffer), and **texture memory**, which routes reads through the GPU's dedicated texture units — the same fixed-function hardware a pixel shader's `Sample()` call hits, still reachable from a kernel via a `cudaTextureObject_t` when its 2D-locality caching or built-in filtering is useful. `local memory` is the odd one out: despite the name, it isn't a separate fast tier, it's register-spill data that actually lives in global memory — which is why register pressure (too many live values for the register file) quietly costs you global-memory bandwidth.
+
+## Getting On And Off The Chip
+
+The GPU is still a peripheral: it's attached to the host system over **PCIe**, or over NVIDIA's own higher-bandwidth **NVLink** for GPU-to-GPU and, on some systems, GPU-to-CPU links — the interconnect that matters once you're doing multi-GPU work (`NCCL`). Dedicated **copy/DMA engines** move data across that link independently of the SMs, which is what makes `cudaMemcpyAsync` genuinely asynchronous: a kernel can keep computing on last frame's data while this frame's input is still in flight, the same overlap a D3D12 copy queue running alongside a direct queue gives you.
+
+Not every specialized unit on the die is reachable from plain CUDA C++ at all: **RT Cores** (BVH traversal and ray-triangle intersection, exposed through OptiX) and the **Optical Flow Accelerator** (motion-vector generation behind DLSS Frame Generation) sit next to the SMs and are driven through their own NVIDIA SDKs rather than a `__global__` kernel.
+
+## Why This Shapes Performance
+
+Nsight Compute's per-kernel metrics all trace back to the hardware above:
+- **Occupancy** — how many warps are resident on an SM at once, capped by whichever resource runs out first: registers, shared memory allocated per block, or the SM's max warp/block count. Low occupancy means the scheduler has fewer warps to switch between when one stalls.
+- **Latency hiding** — a GPU has no CPU-style branch predictor or deep out-of-order window; it hides memory latency by parking a stalled warp and issuing another resident one instead. This is why occupancy matters: too few resident warps and the SM idles waiting on DRAM instead of hiding that wait behind other work.
+- **Memory coalescing** — when the 32 threads of a warp touch contiguous global-memory addresses, the memory controller merges them into a handful of wide transactions; scattered per-thread addresses fragment into many small ones, and bandwidth utilization drops accordingly.
+- **Shared-memory bank conflicts** — shared memory is physically split into 32 banks; when multiple threads in a warp hit the same bank in the same instruction, those accesses serialize instead of completing in one cycle.
+- **Tensor Core utilization** — hitting peak throughput needs the right data types and tile shapes (FP16/BF16/TF32/INT8, dimensions aligned to the core's native tile size); code that doesn't match falls back to CUDA cores and leaves most of the SM's matrix-multiply throughput unused.
+
 # Example Usage
 // TODO rewrite the cubemap generation from OpenCV to CUDA
 # Debug With Nsight
