@@ -113,7 +113,7 @@ Each block is itself a group of **threads**, indexed by `threadIdx` the way `SV_
 | `SV_DispatchThreadID` | computed manually: `blockIdx * blockDim + threadIdx` |
 | `groupshared` | `__shared__` |
 | `GroupMemoryBarrierWithGroupSync()` | `__syncthreads()` |
-| RWStructuredBuffer / UAV via root signature/descriptors | plain device pointer, passed as a kernel argument (CUDA's binding model is much simpler — no descriptor tables) |
+| RWStructuredBuffer / UAV via root signature/descriptors | plain device pointer, passed as a kernel argument (CUDA's binding model is much simpler with no descriptor tables) |
 | `dxc` (HLSL compiler) | `nvcc` |
 | PIX / RenderDoc | Nsight Systems (timeline) / Nsight Compute (per-kernel profiling) |
 | Wave intrinsics (`WaveActiveSum`, 32-lane on NVIDIA hardware) | warp-level primitives (`__shfl_sync`, cooperative groups) — same 32-thread warp under the hood, since it's the same silicon |
@@ -148,7 +148,11 @@ Every level of the compute hierarchy above has a matching memory tier, and the t
 | **Registers** | per-thread | fastest, smallest |
 | **Shared memory / L1** | per-block, lives on the owning SM | fast, on-chip — this is `__shared__` / `groupshared` |
 | **L2 cache** | chip-wide, shared by every SM | slower than L1, still on-chip |
-| **Global memory (DRAM)** | entire grid, every kernel | slowest, largest — the off-chip GDDR/HBM behind every plain device pointer |
+| **Global memory (DRAM)** | entire grid, every kernel | slowest, largest and the off-chip GDDR/HBM behind every plain device pointer |
+
+GDDR and HBM are the two DRAM types GPUs use for that off-chip pool:\
+**GDDR** (e.g. GDDR6X, GDDR7): what consumer/gaming cards use, including the RTX 5090's 32 GB of GDDR7. Discrete chips around the GPU package on the board, connected over a wide bus (512-bit on the 5090).\
+**HBM** (e.g. HBM2e, HBM3): what datacenter GPUs use (A100, H100, MI300, ...). Instead of separate chips on the board, several DRAM dies are stacked vertically and placed right next to the GPU die on a shared silicon interposer — much wider bus, much higher bandwidth per pin, but more expensive to manufacture, which is part of why it's reserved for datacenter parts.
 
 Two more special-purpose paths worth knowing: **constant memory**, a small cached region for read-only values broadcast to every thread (the closest CUDA relative of a constant/uniform buffer), and **texture memory**, which routes reads through the GPU's dedicated texture units — the same fixed-function hardware a pixel shader's `Sample()` call hits, still reachable from a kernel via a `cudaTextureObject_t` when its 2D-locality caching or built-in filtering is useful. `local memory` is the odd one out: despite the name, it isn't a separate fast tier, it's register-spill data that actually lives in global memory — which is why register pressure (too many live values for the register file) quietly costs you global-memory bandwidth.
 
@@ -156,18 +160,19 @@ That same RTX 5090 backs its 170 SMs with 98 MB of L2 cache shared chip-wide, si
 
 ## Getting On And Off The Chip
 
-The GPU is still a peripheral: it's attached to the host system over **PCIe**, or over NVIDIA's own higher-bandwidth **NVLink** for GPU-to-GPU and, on some systems, GPU-to-CPU links — the interconnect that matters once you're doing multi-GPU work (`NCCL`). Dedicated **copy/DMA engines** move data across that link independently of the SMs, which is what makes `cudaMemcpyAsync` genuinely asynchronous: a kernel can keep computing on last frame's data while this frame's input is still in flight, the same overlap a D3D12 copy queue running alongside a direct queue gives you.
+The GPU is still a peripheral: it's attached to the host system over **PCIe**, or over NVIDIA's own higher-bandwidth **NVLink** for GPU-to-GPU and, on some systems, GPU-to-CPU links. Still, these connections matters in specific setups only, like doing multi-GPU work with [NCCL](https://developer.nvidia.com/nccl).\
+Dedicated **copy/DMA engines** move data across that link independently of the SMs, which is what makes [cudaMemcpyAsync](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html#group__CUDART__MEMORY_1g85073372f776b4c4d5f89f7124b7bf79) genuinely asynchronous: a kernel can keep computing on last frame's data while this frame's input is still in flight, the same overlap a D3D12 copy queue running alongside a direct queue gives you.
 
 Not every specialized unit on the die is reachable from plain CUDA C++ at all: **RT Cores** (BVH traversal and ray-triangle intersection, exposed through OptiX) and the **Optical Flow Accelerator** (motion-vector generation behind DLSS Frame Generation) sit next to the SMs and are driven through their own NVIDIA SDKs rather than a `__global__` kernel.
 
-## Why This Shapes Performance
+## How This Shapes Performance
 
-Nsight Compute's per-kernel metrics all trace back to the hardware above:
-- **Occupancy**: how many warps are resident on an SM at once, capped by whichever resource runs out first: registers, shared memory allocated per block, or the SM's max warp/block count. Low occupancy means the scheduler has fewer warps to switch between when one stalls.
-- **Latency hiding**: a GPU has no CPU-style branch predictor or deep out-of-order window; it hides memory latency by parking a stalled warp and issuing another resident one instead. This is why occupancy matters: too few resident warps and the SM idles waiting on DRAM instead of hiding that wait behind other work.
-- **Memory coalescing**: when the 32 threads of a warp touch contiguous global-memory addresses, the memory controller merges them into a handful of wide transactions; scattered per-thread addresses fragment into many small ones, and bandwidth utilization drops accordingly.
-- **Shared-memory bank conflicts**: shared memory is physically split into 32 banks; when multiple threads in a warp hit the same bank in the same instruction, those accesses serialize instead of completing in one cycle.
-- **Tensor Core utilization**: hitting peak throughput needs the right data types and tile shapes (FP16/BF16/TF32/INT8, dimensions aligned to the core's native tile size); code that doesn't match falls back to CUDA cores and leaves most of the SM's matrix-multiply throughput unused.
+[Nsight Compute][nsight-comp]'s per-kernel metrics all trace back to the hardware above:
+- **Occupancy**: how many warps are resident on an SM at once, capped by whichever resource runs out first: registers, shared memory allocated per block, or the SM's max warp/block count. Low occupancy means the scheduler has fewer warps to switch between when one stalls. A warp "stalls" when the next instruction it needs to issue can't execute yet, so the warp scheduler sets it aside and can't make progress on it that cycle. The scheduler then looks for a different resident warp that is ready to issue, and runs that one instead.
+- **Latency hiding**: a GPU has no CPU-style branch predictor or deep [out-of-order window](https://en.wikipedia.org/wiki/Out-of-order_execution). It hides memory latency by parking a stalled warp and issuing another resident one instead. This is why occupancy matters: too few resident warps and the SM idles waiting on DRAM instead of hiding that wait behind other work.
+- **Memory coalescing**: when the 32 threads of a warp touch contiguous global-memory addresses, the memory controller merges them into a handful of wide transactions, scattered per-thread addresses fragment into many small ones. Bandwidth utilization drops accordingly.
+- **Shared-memory bank conflicts**: shared memory is physically split into 32 banks. When multiple threads in a warp hit the same bank in the same instruction, those accesses serialize instead of completing in one cycle.
+- **Tensor Core utilization**: hitting peak throughput needs the right data types and tile shapes (FP16/BF16/TF32/INT8, dimensions aligned to the core's native tile size). Code that doesn't match falls back to CUDA cores and leaves most of the SM's matrix-multiply throughput unused.
 
 # Example Usage
 // TODO rewrite the cubemap generation from OpenCV to CUDA
@@ -203,3 +208,4 @@ Nsight Compute's per-kernel metrics all trace back to the hardware above:
 [mlir]: https://mlir.llvm.org/
 [blackwell-tuning-guide]: https://docs.nvidia.com/cuda/blackwell-tuning-guide/index.html
 [nvidia-rtx5090]: https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/
+[nsight-comp]: https://developer.nvidia.com/nsight-compute
