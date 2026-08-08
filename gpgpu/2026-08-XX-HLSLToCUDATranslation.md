@@ -90,10 +90,14 @@ If you're specifically aiming at the ML/AI-infra job direction discussed earlier
 If cross-vendor portability is the hard requirement, HIP is the least-friction path if you're starting from CUDA, otherwise SYCL if you want to start clean in modern C++.
 
 # Terminology
-The CUDA terminology is similar to HLSL but not the same.
+Two terms show up constantly and are worth pinning down first. 
+
+The **host** is the CPU and its process: your regular C++ program, doing memory allocation, file I/O, and launching kernels, the same role your D3D12 application code plays.\
+The **device** is the GPU itself: the thing every kernel actually executes on, and what every `cudaMalloc`/`cudaMemcpy` call allocates on or moves data to and from.\
+Code and qualifiers are either **host-side** (`__host__`, the implicit default for a plain function) or **device-side** (`__global__`, `__device__`), and the CUDA Runtime API is the bridge between the two, the same way a command queue is the bridge between your D3D12 app and the GPU executing its command lists.
 
 A **kernel** is a C++ function marked `__global__` that runs on the GPU. It's the direct equivalent of an HLSL compute shader's entry point, the function carrying the `[numthreads(x,y,z)]` attribute.\
-**Launching** a kernel means invoking it from host (CPU) code with the `kernel<<<gridDim, blockDim>>>(args)` syntax. This doesn't run the function once: it tells the GPU how many blocks (`gridDim`) and how many threads per block (`blockDim`) to spawn to execute that same function body in parallel, one invocation per thread, equivalent scheduling a `Dispatch(x, y, z)` call performs for a compute shader's `numthreads`-sized thread groups.
+**Launching** a kernel means invoking it from **host** (CPU) code with the `kernel<<<gridDim, blockDim>>>(args)` syntax. This doesn't run the function once: it tells the GPU how many blocks (`gridDim`) and how many threads per block (`blockDim`) to spawn to execute that same function body in parallel, one invocation per thread, equivalent scheduling a `Dispatch(x, y, z)` call performs for a compute shader's `numthreads`-sized thread groups.
 
 ![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaHierarchy_Scheme.svg){:.postImg}
 
@@ -242,6 +246,8 @@ CUDA_CHECK(cudaMemcpy(h_output.data(), d_output, outputBytes, cudaMemcpyDeviceTo
 `cudaMalloc`/`cudaMemcpy`/`cudaFree` are the global-memory allocate/upload/download calls behind every plain device pointer discussed in the Memory Hierarchy section.\
 `cudaDeviceSynchronize()` is the host-side wait for the kernel to finish: since input, kernel and output all live in the same CUDA context, there's no fence-based cross-API synchronization.
 
+More on the specific syntax can be found in the [CUDA official guide][cuda-official-guide].
+
 ## Where The Performance Comes From
 
 The original Python/OpenCV version processes the whole output image through vectorized NumPy array operations and a single `cv2.remap` call: fast for CPU code, but still bound to a handful of CPU cores (plus SIMD width) and paying Python/NumPy per-call dispatch overhead between each vectorized step.
@@ -260,7 +266,7 @@ The math itself, `atan2f`, `sqrtf`, `floorf`, `fminf`/`fmaxf`, is exactly the tr
 - https://en.wikipedia.org/wiki/CUDA
 - [Fast matrix multiplies using graphics hardware][larsen-mcallister]
 - [Working out CUDA Just-In-Time (JIT) compilation - vitalitylearning][jit-vitalitylearning]
-- [CUDA Programming Guide] (https://docs.nvidia.com/cuda/cuda-programming-guide/index.html)
+- [CUDA Programming Guide][cuda-official-guide]
 - 
 
 
@@ -285,3 +291,4 @@ The math itself, `atan2f`, `sqrtf`, `floorf`, `fminf`/`fmaxf`, is exactly the tr
 [blackwell-tuning-guide]: https://docs.nvidia.com/cuda/blackwell-tuning-guide/index.html
 [nvidia-rtx5090]: https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/
 [nsight-comp]: https://developer.nvidia.com/nsight-compute
+[cuda-official-guide]: https://docs.nvidia.com/cuda/cuda-programming-guide/index.html
