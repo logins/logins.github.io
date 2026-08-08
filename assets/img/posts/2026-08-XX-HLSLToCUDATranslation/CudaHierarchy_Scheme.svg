@@ -22,8 +22,8 @@
      inkscape:deskcolor="#d1d1d1"
      showgrid="false"
      inkscape:zoom="1.58"
-     inkscape:cx="862.34177"
-     inkscape:cy="250.31646"
+     inkscape:cx="794.62025"
+     inkscape:cy="200.31646"
      inkscape:window-width="3339"
      inkscape:window-height="1259"
      inkscape:window-x="4022"
@@ -62,11 +62,12 @@
   <!-- background -->
   <rect
      x="1.7530148"
-     y="32.278481"
+     y="7.1054274e-15"
      width="700"
      height="650"
      fill="#ffffff"
-     id="rect10" />
+     id="rect10"
+     style="stroke-width:1" />
   <!-- Kernel launch -->
   <rect
      x="110"
