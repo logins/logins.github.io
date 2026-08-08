@@ -175,7 +175,81 @@ Not every specialized unit on the die is reachable from plain CUDA C++ at all: *
 - **Tensor Core utilization**: hitting peak throughput needs the right data types and tile shapes (FP16/BF16/TF32/INT8, dimensions aligned to the core's native tile size). Code that doesn't match falls back to CUDA cores and leaves most of the SM's matrix-multiply throughput unused.
 
 # Example Usage
-// TODO rewrite the cubemap generation from OpenCV to CUDA
+
+To see the terminology and hardware model above land in actual code, [cuda-cubemap](https://github.com/logins/cuda-cubemap) is a small CUDA port of the equirectangular-to-cubemap conversion from [Cubemap Generation With OpenCV](/graphics/2022/09/26/CubemapGenerationWithOpenCV.html): same algorithm (map each output cube-face texel to a 3D direction, convert that direction to spherical coordinates, bilinearly sample the input panorama at the resulting longitude/latitude), moved from Python/NumPy/OpenCV to a `__global__` CUDA kernel running one thread per output pixel.
+
+## The Kernel
+
+The kernel signature and dispatch index come directly from the Terminology table above:
+
+```cpp
+__global__ void equirectToCubemapCrossKernel(
+    const unsigned char* __restrict__ input, int inputWidth, int inputHeight,
+    unsigned char* __restrict__ output, int outputWidth, int faceSize)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x >= outputWidth || y >= 3 * faceSize)
+        return;
+
+    // ...face/direction/spherical-coordinate math, then a bilinear sample...
+}
+```
+
+`__global__` is the qualifier that makes this a **kernel**: a function that runs on the device but is callable from host code, exactly the `[numthreads(x,y,z)]`-attributed entry point of a compute shader.\
+`blockIdx.x * blockDim.x + threadIdx.x` is the `SV_DispatchThreadID` row from that table, written out by hand since CUDA doesn't compute it for you.\
+`__restrict__` is CUDA's spelling of C99/C++'s pointer-aliasing hint: it tells `nvcc` that `input` and `output` never overlap, which is what allows more aggressive load/store scheduling.
+
+The bilinear sample itself lives in a separate function marked `__device__` instead of `__global__`:
+
+```cpp
+__device__ void sampleBilinear(const unsigned char* img, int width, int height,
+                                float u, float v, unsigned char* outPixel)
+```
+
+`__device__` is the third CUDA-specific function qualifier (alongside `__global__` and host-only, unmarked functions): it can only be called from other device code, never from the host, which C++ alone has no concept of, there's no equivalent access restriction on a plain function.
+
+Launching the kernel is where the `kernel<<<gridDim, blockDim>>>(...)` syntax from the Terminology section shows up for real:
+
+```cpp
+dim3 blockDim(16, 16);
+dim3 gridDim((outputWidth + blockDim.x - 1) / blockDim.x,
+             (outputHeight + blockDim.y - 1) / blockDim.y);
+
+equirectToCubemapCrossKernel<<<gridDim, blockDim>>>(
+    d_input, inputWidth, inputHeight, d_output, outputWidth, faceSize);
+```
+
+`dim3` is CUDA's built-in 3-component vector type for launch dimensions, the `gridDim`/`blockDim` equivalent of a `numthreads`-shaped `Dispatch(x, y, z)` call.\
+The ceiling-division for `gridDim` is the same pattern a compute shader dispatch needs whenever the image size isn't an exact multiple of the thread-group size, so a partially-filled group at the border reads/writes out of bounds unless the kernel itself checks (that's what the `if (x >= outputWidth || ...) return;` guard above is for).\
+Picking a 16 × 16 block also isn't arbitrary: that's 256 threads, exactly 8 full warps, so no lane in any warp goes idle from a badly-shaped block.
+
+## Host Side: Getting Data To And From The GPU
+
+The host driver in `main.cu` is where the "CUDA's binding model is much simpler" shows up. No descriptor heaps, no root signature, no resource-state transitions: just a handful of C-style Runtime API calls moving flat device pointers around.
+
+```cpp
+CUDA_CHECK(cudaMalloc(&d_input, inputBytes));
+CUDA_CHECK(cudaMemcpy(d_input, h_input, inputBytes, cudaMemcpyHostToDevice));
+
+launchEquirectToCubemapCross(d_input, inputWidth, inputHeight, d_output, faceSize);
+CUDA_CHECK(cudaDeviceSynchronize());
+
+CUDA_CHECK(cudaMemcpy(h_output.data(), d_output, outputBytes, cudaMemcpyDeviceToHost));
+```
+
+`cudaMalloc`/`cudaMemcpy`/`cudaFree` are the global-memory allocate/upload/download calls behind every plain device pointer discussed in the Memory Hierarchy section.\
+`cudaDeviceSynchronize()` is the host-side wait for the kernel to finish: since input, kernel and output all live in the same CUDA context, there's no fence-based cross-API synchronization.
+
+## Where The Performance Comes From
+
+The original Python/OpenCV version processes the whole output image through vectorized NumPy array operations and a single `cv2.remap` call: fast for CPU code, but still bound to a handful of CPU cores (plus SIMD width) and paying Python/NumPy per-call dispatch overhead between each vectorized step.
+
+The CUDA port instead launches one thread per output pixel, tens of millions of them for a large cross image, and every thread's work (pick a face, build a direction vector, convert to spherical coordinates, bilinearly sample) is entirely independent of every other thread's.\
+There's no `__shared__` memory and no `__syncthreads()` anywhere in this kernel: with zero data reuse between neighboring output pixels, there's nothing to stage in on-chip memory, so the kernel is free to just spread across as many resident warps as the GPU can schedule and let latency hiding do the rest.\
+The math itself, `atan2f`, `sqrtf`, `floorf`, `fminf`/`fmaxf`, is exactly the transcendental workload the SFUs from the Compute Hierarchy section, while the bilinear sample's four texel fetches and lerp belong to the load/store units.
+
 # Debug With Nsight
 // TODO
 ## Nsight Systems (timeline)
@@ -186,6 +260,8 @@ Not every specialized unit on the die is reachable from plain CUDA C++ at all: *
 - https://en.wikipedia.org/wiki/CUDA
 - [Fast matrix multiplies using graphics hardware][larsen-mcallister]
 - [Working out CUDA Just-In-Time (JIT) compilation - vitalitylearning][jit-vitalitylearning]
+- [CUDA Programming Guide] (https://docs.nvidia.com/cuda/cuda-programming-guide/index.html)
+- 
 
 
 [larsen-mcallister]: https://dl.acm.org/doi/10.1145/582034.582089
