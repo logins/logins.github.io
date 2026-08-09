@@ -256,8 +256,16 @@ The CUDA port instead launches one thread per output pixel, tens of millions of 
 There's no `__shared__` memory and no `__syncthreads()` anywhere in this kernel: with zero data reuse between neighboring output pixels, there's nothing to stage in on-chip memory, so the kernel is free to just spread across as many resident warps as the GPU can schedule and let latency hiding do the rest.\
 The math itself, `atan2f`, `sqrtf`, `floorf`, `fminf`/`fmaxf`, is exactly the transcendental workload the SFUs from the Compute Hierarchy section, while the bilinear sample's four texel fetches and lerp belong to the load/store units.
 
-# Debug With Nsight
-// TODO
+# Debug And Profile CUDA
+[NVIDIA's Nsight][nsight-overview] suite is the CUDA-native counterpart to PIX/RenderDoc, split across a few purpose-built tools rather than one single application:
+
+- **Nsight Systems**: a system-wide timeline correlating CPU calls, kernel launches, memory copies and their overlap across streams, the first stop for "where is the time actually going" questions (covered below).
+- **Nsight Compute**: a per-kernel deep dive, occupancy, register pressure, warp execution efficiency, memory-throughput breakdowns, for once the slow kernel is already found and the question becomes *why* (also covered below).
+- **Nsight Visual Studio Edition**: integrates a CUDA-aware debugger directly into Visual Studio, breakpoints and stepping through device code, register/local-memory watch windows, the same workflow as debugging host C++ code. `cuda-gdb` is the command-line equivalent on Linux.
+- **`compute-sanitizer`** (the successor to the now-deprecated `cuda-memcheck`): a correctness-checking suite catching out-of-bounds/misaligned global-memory accesses, shared-memory race conditions, uninitialized reads, and incorrect `__syncthreads()` usage, CUDA's equivalent of ASan for device code.
+
+`cuda-gdb`, `compute-sanitizer`, and both Nsight profilers ship with the [CUDA Toolkit installer][cuda-toolkit-download]; [Nsight Systems][nsight-systems-download] and [Nsight Compute][nsight-compute-download] are also available as standalone downloads (updated on their own, faster cadence), and Nsight Visual Studio Edition has its [own installer][nsight-vse].
+
 ## Nsight Systems (timeline)
 //TODO
 ## Nsight Compute
@@ -290,5 +298,10 @@ The math itself, `atan2f`, `sqrtf`, `floorf`, `fminf`/`fmaxf`, is exactly the tr
 [mlir]: https://mlir.llvm.org/
 [blackwell-tuning-guide]: https://docs.nvidia.com/cuda/blackwell-tuning-guide/index.html
 [nvidia-rtx5090]: https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/
+[nsight-overview]: https://developer.nvidia.com/tools-overview
+[nsight-vse]: https://developer.nvidia.com/nsight-visual-studio-edition
+[cuda-toolkit-download]: https://developer.nvidia.com/cuda-downloads
+[nsight-systems-download]: https://developer.nvidia.com/nsight-systems
+[nsight-compute-download]: https://developer.nvidia.com/nsight-compute
 [nsight-comp]: https://developer.nvidia.com/nsight-compute
 [cuda-official-guide]: https://docs.nvidia.com/cuda/cuda-programming-guide/index.html
