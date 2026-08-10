@@ -267,7 +267,23 @@ The math itself, `atan2f`, `sqrtf`, `floorf`, `fminf`/`fmaxf`, is exactly the tr
 `cuda-gdb`, `compute-sanitizer`, and both Nsight profilers ship with the [CUDA Toolkit installer][cuda-toolkit-download]; [Nsight Systems][nsight-systems-download] and [Nsight Compute][nsight-compute-download] are also available as standalone downloads (updated on their own, faster cadence), and Nsight Visual Studio Edition has its [own installer][nsight-vse].
 
 ## Nsight Systems (timeline)
-//TODO
+Nsight systems documentation can be [found at this link](https://docs.nvidia.com/nsight-systems/index.html).\
+Capturing a profile of [cuda-cubemap](https://github.com/logins/cuda-cubemap) from the Example Usage section above shows the shape you'd expect from a program that does one image, once: a single stream, no overlap, with the GPU timeline laid out as three back-to-back blocks, an H2D `cudaMemcpy`, the kernel, and a D2H `cudaMemcpy`. Nothing runs concurrently: no `cudaMemcpyAsync`, no second stream, so each phase blocks the next.
+
+The **CUDA API Summary** view is more interesting than the timeline shape alone:
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\NsightSystems_APISummary.png){:.postImg}
+
+`cudaMalloc` dominates at 74.5% of total CPU-side API time (126.744 ms across 2 calls), but that's not the cost of allocating device memory: it's the CUDA runtime's lazy context initialization (driver init, primary context creation, device enumeration) getting billed to whichever CUDA call happens to run first in the process. It's a one-time cost, not a per-call one, the CUDA equivalent of a first-frame shader-compile stutter in D3D12: run this on a batch of images instead of one, and it's paid once, not once per image.
+
+`cudaMemcpy` (24.0%, 40.811 ms for the H2D + D2H pair) is the real cost worth discussing. The host-side image buffers here (`stb_image`'s output, a plain heap allocation) are regular pageable memory rather than pinned memory (`cudaMallocHost`/`cudaHostAlloc`), so the driver stages every transfer through an internal pinned bounce buffer first. That's slower than a direct DMA, and it's also a prerequisite for the async `cudaMemcpyAsync` overlap discussed under "Getting On And Off The Chip": pageable memory can't be transferred asynchronously at all. Everything else in the table, `cudaFree`, `cudaDeviceSynchronize`, `cudaLaunchKernel`, module loading (`cuLibraryLoadData` and friends), adds up to under 1.5 ms combined: launch and module-loading machinery isn't where the time goes.
+
+That table is CPU-side API duration, though, not GPU execution time. For that, the **CUDA GPU Kernel Summary** view is the right one:
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\NsightSystems_KernelSummary.png){:.postImg}
+
+`equirectToCubemapCrossKernel` actually ran in 574.228 µs on the GPU, closely matching the 552.650 µs `cudaDeviceSynchronize` reported in the API table above (unsurprising, since blocking on the kernel's completion is exactly what that call does). Set against the 40.811 ms `cudaMemcpy` total, the kernel is roughly **71× faster than the round trip that feeds it**. For this kernel that's not a surprise in hindsight: the "Where The Performance Comes From" discussion earlier already noted there's no `__shared__` memory, no `__syncthreads()`, and no occupancy tuning needed, so the compute really is close to free. What the profile adds is the honest complication that "free compute" doesn't mean "free end-to-end": for a one-shot, run-once texture-pipeline tool like this one, a 41ms transfer cost is a non-issue, but the same ratio in a pipeline processing many images or frames back-to-back would make the transfer, not the kernel, the thing worth optimizing first.
+
 ## Nsight Compute
 // TODO
 # Sources
