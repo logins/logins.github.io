@@ -267,8 +267,22 @@ The math itself, `atan2f`, `sqrtf`, `floorf`, `fminf`/`fmaxf`, is exactly the tr
 `cuda-gdb`, `compute-sanitizer`, and both Nsight profilers ship with the [CUDA Toolkit installer][cuda-toolkit-download]; [Nsight Systems][nsight-systems-download] and [Nsight Compute][nsight-compute-download] are also available as standalone downloads (updated on their own, faster cadence), and Nsight Visual Studio Edition has its [own installer][nsight-vse].
 
 ## Nsight Systems (timeline)
+> **Hardware used for this capture.** The profile below was captured on an NVIDIA GeForce RTX 4080, the machine cuda-cubemap actually ran on, not the RTX 5090 used for the spec numbers in the Hardware section above. The two aren't meant to line up: the 5090 figures are architecture reference points, this capture just reflects whatever GPU happened to be in the dev machine.
+
 Nsight systems documentation can be [found at this link](https://docs.nvidia.com/nsight-systems/index.html).\
+Worth defining: 
+- **H2D** = Host-to-Device (uploading data from CPU/system RAM to the GPU, e.g. `cudaMemcpyHostToDevice`)
+- **D2H** = Device-to-Host (downloading results from the GPU back to CPU/system RAM, e.g. `cudaMemcpyDeviceToHost`). 
+
 Capturing a profile of [cuda-cubemap](https://github.com/logins/cuda-cubemap) from the Example Usage section above shows the shape you'd expect from a program that does one image, once: a single stream, no overlap, with the GPU timeline laid out as three back-to-back blocks, an H2D `cudaMemcpy`, the kernel, and a D2H `cudaMemcpy`. Nothing runs concurrently: no `cudaMemcpyAsync`, no second stream, so each phase blocks the next.
+
+> **Capturing this profile.** cuda-cubemap has a VS Code task for this: **Tasks: Run Task > "nsys: profile and open report"** builds the project, profiles it against the sample texture, and opens the resulting timeline directly in the Nsight Systems GUI, no manual `nsys profile` invocation needed. See the "Profiling with Nsight Systems" section of the [repo's README](https://github.com/logins/cuda-cubemap#profiling-with-nsight-systems) for the setup details (including the admin-privileges note for CPU context-switch/sampling data).
+
+Nsight Systems' process tree gives a cleaner, GPU-only version of that same story, scoped to actual device time rather than CPU API duration:
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\NsightSystems_ProcessTree.png){:.postImg}
+
+Kernels account for just 1.6% of GPU time against 98.4% for memory operations, the same "compute is cheap, transfer dominates" story detailed below, but without `cudaMalloc`'s context-init cost muddying it. It also splits the transfer itself: 55.8% DtoH against 44.2% HtoD, the download costing more than the upload, because the output horizontal-cross image ends up larger than the input equirectangular panorama.
 
 The **CUDA API Summary** view is more interesting than the timeline shape alone:
 
