@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 800 620"
+   role="img"
+   aria-label="Diagram of the main CUDA dynamics in the cuda-cubemap application: the host loads the image, allocates device memory, uploads it (H2D), asynchronously launches the kernel, blocks on cudaDeviceSynchronize, downloads the result (D2H), and saves it, while the device runs one thread per output pixel against global memory holding d_input and d_output."
+   version="1.1"
+   id="svg108"
+   sodipodi:docname="CudaCubemapDynamics_Scheme.svg"
+   width="800"
+   height="620"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview110"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="1.9400439"
+     inkscape:cx="467.77292"
+     inkscape:cy="243.55119"
+     inkscape:window-width="3840"
+     inkscape:window-height="2054"
+     inkscape:window-x="3829"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg108" />
+  <defs
+     id="defs8">
+    <marker
+       style="overflow:visible"
+       id="marker4"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path4" />
+    </marker>
+    <marker
+       id="arrowBlack"
+       viewBox="0 0 12 12"
+       refX="10"
+       refY="6"
+       markerWidth="6"
+       markerHeight="6"
+       orient="auto-start-reverse"
+       preserveAspectRatio="xMidYMid">
+      <path
+         d="M 0,0 12,6 0,12 Z"
+         fill="#000000"
+         id="path2" />
+    </marker>
+    <marker
+       id="arrowRed"
+       viewBox="0 0 12 12"
+       refX="10"
+       refY="6"
+       markerWidth="10"
+       markerHeight="10"
+       orient="auto-start-reverse">
+      <path
+         d="M 0,0 12,6 0,12 Z"
+         fill="#b22222"
+         id="path5" />
+    </marker>
+  </defs>
+  <rect
+     x="0"
+     y="0"
+     width="800"
+     height="620"
+     fill="#ffffff"
+     id="rect10"
+     style="stroke-width:0.852803" />
+  <!-- Host lane -->
+  <text
+     x="12.86945"
+     y="30"
+     text-anchor="start"
+     font-family="Arial, Helvetica, sans-serif"
+     font-weight="bold"
+     font-style="italic"
+     font-size="18px"
+     id="text12">Host (CPU)</text>
+  <rect
+     x="12.798201"
+     y="39.930378"
+     width="774.39038"
+     height="269.39392"
+     rx="11.913698"
+     fill="none"
+     stroke="#000000"
+     stroke-width="2.86461"
+     stroke-dasharray="10, 6"
+     id="rect14"
+     style="fill:#c0e7fc;fill-opacity:1" />
+  <g
+     font-family="Arial, Helvetica, sans-serif"
+     id="g58"
+     transform="translate(-170.58281,36.272456)">
+    <!-- 0: Load Image -->
+    <!-- 1: cudaMalloc -->
+    <rect
+       x="195"
+       y="100"
+       width="130"
+       height="90"
+       rx="8"
+       fill="#d9d9d9"
+       stroke="#000000"
+       stroke-width="2.5"
+       id="rect22" />
+    <text
+       x="260"
+       y="138"
+       text-anchor="middle"
+       font-weight="bold"
+       font-size="14px"
+       id="text24">cudaMalloc</text>
+    <text
+       x="260"
+       y="162"
+       text-anchor="middle"
+       font-style="italic"
+       font-size="11px"
+       id="text26">d_input, d_output</text>
+    <!-- 2: cudaMemcpy H2D -->
+    <rect
+       x="340"
+       y="100"
+       width="130"
+       height="90"
+       rx="8"
+       fill="#d9d9d9"
+       stroke="#000000"
+       stroke-width="2.5"
+       id="rect28" />
+    <text
+       x="405"
+       y="138"
+       text-anchor="middle"
+       font-weight="bold"
+       font-size="14px"
+       id="text30">cudaMemcpy</text>
+    <text
+       x="404.93146"
+       y="163.32115"
+       text-anchor="middle"
+       font-style="italic"
+       font-size="16.1051px"
+       id="text32"
+       inkscape:label="H2D"
+       style="stroke-width:1.4641">(H2D)</text>
+    <!-- 3: kernel launch -->
+    <rect
+       x="485"
+       y="100"
+       width="130"
+       height="90"
+       rx="8"
+       fill="#d9d9d9"
+       stroke="#000000"
+       stroke-width="2.5"
+       id="rect34" />
+    <text
+       x="550"
+       y="138"
+       text-anchor="middle"
+       font-weight="bold"
+       font-size="14px"
+       id="text36">kernel&lt;&lt;&lt;...&gt;&gt;&gt;</text>
+    <text
+       x="549.98077"
+       y="162.58371"
+       text-anchor="middle"
+       font-style="italic"
+       font-size="13.31px"
+       id="text38"
+       style="stroke-width:1.21">async launch</text>
+    <!-- 4: cudaDeviceSynchronize -->
+    <rect
+       x="630"
+       y="100"
+       width="130"
+       height="90"
+       rx="8"
+       fill="#d9d9d9"
+       stroke="#000000"
+       stroke-width="2.5"
+       id="rect40" />
+    <text
+       x="695"
+       y="138"
+       text-anchor="middle"
+       font-weight="bold"
+       font-size="14px"
+       id="text42">cudaDeviceSync</text>
+    <text
+       x="695"
+       y="162"
+       text-anchor="middle"
+       font-style="italic"
+       font-size="11px"
+       id="text44">blocks host</text>
+    <!-- 5: cudaMemcpy D2H -->
+    <rect
+       x="775"
+       y="100"
+       width="130"
+       height="90"
+       rx="8"
+       fill="#d9d9d9"
+       stroke="#000000"
+       stroke-width="2.5"
+       id="rect46" />
+    <text
+       x="840"
+       y="138"
+       text-anchor="middle"
+       font-weight="bold"
+       font-size="14px"
+       id="text48">cudaMemcpy</text>
+    <text
+       x="839.93146"
+       y="163.32115"
+       text-anchor="middle"
+       font-style="italic"
+       font-size="16.1051px"
+       id="text50"
+       inkscape:label="D2H"
+       style="stroke-width:1.4641">(D2H)</text>
+    <!-- 6: Save PNG -->
+  </g>
+  <g
+     id="g441"
+     transform="translate(-272.05573,153.51907)">
+    <rect
+       x="919.62286"
+       y="99.622871"
+       width="130.75426"
+       height="43.632717"
+       rx="8.0464153"
+       fill="#d9d9d9"
+       stroke="#000000"
+       stroke-width="1.74575"
+       id="rect52" />
+    <text
+       x="985.01367"
+       y="118.31809"
+       text-anchor="middle"
+       font-weight="bold"
+       font-size="14px"
+       id="text54">Save PNG</text>
+    <text
+       x="986.83606"
+       y="132.57298"
+       text-anchor="middle"
+       font-style="italic"
+       font-size="11px"
+       id="text56">stb_image_write</text>
+  </g>
+  <!-- sequential host arrows -->
+  <g
+     id="g420"
+     transform="translate(-28.320491,-46.25)">
+    <rect
+       x="49.731529"
+       y="99.731529"
+       width="130.53694"
+       height="55.263504"
+       rx="8.0330429"
+       fill="#d9d9d9"
+       stroke="#000000"
+       stroke-width="1.96306"
+       id="rect16" />
+    <text
+       x="114.6958"
+       y="120.50497"
+       text-anchor="middle"
+       font-weight="bold"
+       font-size="14px"
+       id="text18">Load Image</text>
+    <text
+       x="114.6958"
+       y="144.50497"
+       text-anchor="middle"
+       font-style="italic"
+       font-size="11px"
+       id="text20">stb_image</text>
+  </g>
+  <line
+     x1="83.93573"
+     y1="108.74503"
+     x2="83.93573"
+     y2="131.35251"
+     stroke="#000000"
+     stroke-width="3.06916"
+     marker-end="url(#arrowBlack)"
+     id="line60" />
+  <line
+     x1="154.41716"
+     y1="181.27246"
+     x2="169.41716"
+     y2="181.27246"
+     stroke="#000000"
+     stroke-width="2.5"
+     marker-end="url(#arrowBlack)"
+     id="line62" />
+  <line
+     x1="299.41718"
+     y1="181.27246"
+     x2="314.41718"
+     y2="181.27246"
+     stroke="#000000"
+     stroke-width="2.5"
+     marker-end="url(#arrowBlack)"
+     id="line64" />
+  <line
+     x1="444.41718"
+     y1="181.27246"
+     x2="459.41718"
+     y2="181.27246"
+     stroke="#000000"
+     stroke-width="2.5"
+     marker-end="url(#arrowBlack)"
+     id="line66" />
+  <line
+     x1="589.41718"
+     y1="181.27246"
+     x2="604.41718"
+     y2="181.27246"
+     stroke="#000000"
+     stroke-width="2.5"
+     marker-end="url(#arrowBlack)"
+     id="line68" />
+  <line
+     x1="714.40222"
+     y1="227.52246"
+     x2="714.40222"
+     y2="248.81291"
+     stroke="#000000"
+     stroke-width="2.97842"
+     marker-end="url(#arrowBlack)"
+     id="line70" />
+  <!-- Device lane -->
+  <text
+     x="14.48188"
+     y="365.71902"
+     text-anchor="start"
+     font-family="Arial, Helvetica, sans-serif"
+     font-weight="bold"
+     font-style="italic"
+     font-size="18px"
+     id="text72">Device (GPU)</text>
+  <rect
+     x="14.273925"
+     y="375.51309"
+     width="773.06702"
+     height="230.41193"
+     rx="11.893339"
+     fill="none"
+     stroke="#000000"
+     stroke-width="2.58882"
+     stroke-dasharray="10, 6"
+     id="rect74"
+     style="fill:#f6c6c6;fill-opacity:1" />
+  <!-- Kernel execution -->
+  <rect
+     x="269.76166"
+     y="404.97617"
+     width="220"
+     height="80"
+     rx="10"
+     fill="#d9d9d9"
+     stroke="#000000"
+     stroke-width="3"
+     id="rect76" />
+  <text
+     x="379.76166"
+     y="437.97617"
+     text-anchor="middle"
+     font-family="Arial, Helvetica, sans-serif"
+     font-weight="bold"
+     font-size="16px"
+     id="text78">Kernel Execution</text>
+  <text
+     x="379.76166"
+     y="462.97617"
+     text-anchor="middle"
+     font-family="Arial, Helvetica, sans-serif"
+     font-style="italic"
+     font-size="13px"
+     id="text80">one thread per output pixel</text>
+  <!-- Global Memory -->
+  <rect
+     x="36.602203"
+     y="526.04095"
+     width="686.85846"
+     height="70.372238"
+     rx="9.1581125"
+     fill="#f6c6c6"
+     stroke="#b22222"
+     stroke-width="2.62776"
+     id="rect82"
+     style="fill:#c6f6cc;fill-opacity:1;stroke:#187a23;stroke-opacity:1" />
+  <text
+     x="379.76166"
+     y="554.9762"
+     text-anchor="middle"
+     font-family="Arial, Helvetica, sans-serif"
+     font-weight="bold"
+     font-size="17px"
+     id="text84">Global Memory</text>
+  <text
+     x="379.76166"
+     y="577.9762"
+     text-anchor="middle"
+     font-family="Consolas, Menlo, monospace"
+     font-size="13px"
+     id="text86">d_input / d_output (off-chip DRAM)</text>
+  <!-- Kernel <-> Global Memory -->
+  <line
+     x1="329.76166"
+     y1="522.9762"
+     x2="329.76166"
+     y2="486.97617"
+     stroke="#000000"
+     stroke-width="2.5"
+     marker-end="url(#arrowBlack)"
+     id="line88" />
+  <text
+     x="321.68323"
+     y="509.39581"
+     text-anchor="end"
+     font-family="Arial, Helvetica, sans-serif"
+     font-style="italic"
+     font-size="13.31px"
+     fill="#555555"
+     id="text90"
+     style="stroke-width:1.21">reads d_input</text>
+  <line
+     x1="429.76166"
+     y1="486.97617"
+     x2="429.76166"
+     y2="522.9762"
+     stroke="#000000"
+     stroke-width="2.5"
+     marker-end="url(#arrowBlack)"
+     id="line92" />
+  <text
+     x="441.78888"
+     y="507.57339"
+     text-anchor="start"
+     font-family="Arial, Helvetica, sans-serif"
+     font-style="italic"
+     font-size="13.31px"
+     fill="#555555"
+     id="text94"
+     style="stroke-width:1.21">writes d_output</text>
+  <!-- Host <-> Device crossings -->
+  <text
+     x="161.0011"
+     y="341.28903"
+     text-anchor="start"
+     font-family="Arial, Helvetica, sans-serif"
+     font-weight="bold"
+     font-style="italic"
+     font-size="17.5474px"
+     fill="#b22222"
+     id="text98"
+     style="fill:#058a0c;fill-opacity:1;stroke-width:1.25339">H2D</text>
+  <text
+     x="643.32428"
+     y="340.34097"
+     text-anchor="start"
+     font-family="Arial, Helvetica, sans-serif"
+     font-weight="bold"
+     font-style="italic"
+     font-size="17.196px"
+     fill="#b22222"
+     id="text102"
+     style="fill:#22943a;fill-opacity:1;stroke-width:1.22828">D2H</text>
+  <line
+     x1="377.25201"
+     y1="227.96552"
+     x2="377.25201"
+     y2="398.68146"
+     stroke="#000000"
+     stroke-width="2.93798"
+     marker-end="url(#arrowBlack)"
+     id="line104" />
+  <path
+     style="fill:#f6c6c6;fill-rule:evenodd;stroke:#22943a;stroke-width:5.44745;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:3.6;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker4);paint-order:markers stroke fill"
+     d="M 212.91288,226.27246 V 506.21963"
+     id="path3" />
+  <path
+     style="fill:#f6c6c6;fill-rule:evenodd;stroke:#22943a;stroke-width:5.44745;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:3.6;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker4);paint-order:markers stroke fill"
+     d="M 627.30597,526.81393 V 246.86676"
+     id="path6" />
+</svg>

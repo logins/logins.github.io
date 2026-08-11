@@ -182,6 +182,12 @@ Not every specialized unit on the die is reachable from plain CUDA C++ at all: *
 
 To see the terminology and hardware model above land in actual code, [cuda-cubemap](https://github.com/logins/cuda-cubemap) is a small CUDA port of the equirectangular-to-cubemap conversion from [Cubemap Generation With OpenCV](/graphics/2022/09/26/CubemapGenerationWithOpenCV.html): same algorithm (map each output cube-face texel to a 3D direction, convert that direction to spherical coordinates, bilinearly sample the input panorama at the resulting longitude/latitude), moved from Python/NumPy/OpenCV to a `__global__` CUDA kernel running one thread per output pixel.
 
+Before diving into code, here's the shape of the whole program: what runs on the host, what runs on the device, and where the two boundaries (the `H2D`/`D2H` copies from the Nsight Systems section below) actually sit.
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\CudaCubemapDynamics_Scheme.svg){:.postImg}
+
+The kernel launch itself is asynchronous: `cudaLaunchKernel` returns to the host immediately, which is why `cudaDeviceSynchronize` further down the host lane is a separate, explicit blocking call rather than something implied by the launch. On the device side, every thread reads from `d_input` and writes to `d_output` independently, both living in global memory, the same off-chip pool discussed in the Memory Hierarchy section, with no `__shared__` traffic between threads at all.
+
 ## The Kernel
 
 The kernel signature and dispatch index come directly from the Terminology table above:
