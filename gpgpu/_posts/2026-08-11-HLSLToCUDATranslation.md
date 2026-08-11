@@ -1,17 +1,18 @@
 ---
 layout: post
 title:  "From HLSL To CUDA"
-subtitle: A graphics engineer approach to general purpose computing on the GPU.
+subtitle: A graphics engineer's first steps into general purpose computing on the GPU.
 author: "Riccardo Loggini"
 tocmaxlevel: 2
 tags: [hlsl,cuda]
 ---
+# Why CUDA In Graphics
 GPUs already had an important role in general purpose computing before AI, in scientific and engineering simulation, cryptography and data processing, to name a few, but the spread of generative models has pushed GPU engineering skills into much higher demand.\
 Applications are changing as fast as the hardware, and as a GPU specialist I feel it's important to keep up with what the market is asking for.\
 I'm writing this post as an introduction to CUDA from a graphics software engineer perspective.  
 
-The following content can be seen as a continuation read from [my previous post about compute shaders](/graphics/2021/10/31/D3D12ComputeShaders.html).
-# Why CUDA In Graphics
+The following content can be seen as a continuation read from [my previous post about compute shaders]({% post_url graphics/_posts/2020-10-31-D3D12ComputeShaders %}).
+
 [CUDA is an NVIDIA API][nvidia-cuda] for GPGPU: General-Purpose computing on Graphics Processing Units.\
 It refers to using a GPU's massively parallel architecture for computation beyond the traditional rasterization pipeline.
 
