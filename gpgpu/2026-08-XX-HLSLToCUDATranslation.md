@@ -343,10 +343,32 @@ It estimates a 14.72% local speedup if that gap closed, real, but not the kind o
 
 # Sources
 - https://en.wikipedia.org/wiki/CUDA
+- [NVIDIA CUDA][nvidia-cuda]
 - [Fast matrix multiplies using graphics hardware][larsen-mcallister]
+- [NVIDIA OptiX][optix]
+- [Arnold Renderer][arnold]
+- [NVIDIA Flex][flex]
+- [NVIDIA PhysX SDK][physx]
+- [CUDA Thrust][trust]
+- [Unity Progressive Lightmapper documentation][unity-lightmap]
+- [OpenCL][opencl]
+- [NVIDIA DLSS][dlss]
+- [NVIDIA NGX Programming Guide][ngx-docs]
+- [NVIDIA Omniverse][omniverse]
 - [Working out CUDA Just-In-Time (JIT) compilation - vitalitylearning][jit-vitalitylearning]
+- [HIP documentation (AMD ROCm)][hip]
+- [ROCm (AMD)][rocm]
+- [SYCL][sycl]
+- [Triton][triton]
+- [MLIR][mlir]
+- [NVIDIA Blackwell Tuning Guide][blackwell-tuning-guide]
+- [NVIDIA GeForce RTX 5090][nvidia-rtx5090]
+- [Nsight Compute][nsight-comp]
 - [CUDA Programming Guide][cuda-official-guide]
-- 
+- [NVIDIA Nsight Developer Tools overview][nsight-overview]
+- [CUDA Toolkit downloads][cuda-toolkit-download]
+- [Nsight Systems downloads][nsight-systems-download]
+- [Nsight Visual Studio Edition][nsight-vse]
 
 
 [larsen-mcallister]: https://dl.acm.org/doi/10.1145/582034.582089
