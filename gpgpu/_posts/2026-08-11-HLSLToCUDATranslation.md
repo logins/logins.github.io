@@ -345,7 +345,7 @@ That's Theoretical Occupancy of 100%, no headroom left on the table by the block
 It estimates a 14.72% local speedup if that gap closed, real, but not the kind of number that would change the conclusion from the Example Usage section: for a one-shot conversion tool, `d_input`'s coalescing and this occupancy gap are the two places left to optimize, and neither is worth chasing until this kernel runs inside something that calls it often enough for 564 µs to start adding up.
 
 # Sources
-- https://en.wikipedia.org/wiki/CUDA
+- [CUDA from Wikipedia](https://en.wikipedia.org/wiki/CUDA)
 - [NVIDIA CUDA][nvidia-cuda]
 - [Fast matrix multiplies using graphics hardware][larsen-mcallister]
 - [NVIDIA OptiX][optix]
