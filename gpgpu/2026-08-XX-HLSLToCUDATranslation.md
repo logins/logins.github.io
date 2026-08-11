@@ -316,7 +316,31 @@ The previous listed table image is CPU-side API duration, though, not GPU execut
 What the profile adds is the honest complication that "free compute" doesn't mean "free end-to-end": for a one-shot, run-once texture-pipeline tool like this one, a 41ms transfer cost is a non-issue, but the same ratio in a pipeline processing many images or frames back-to-back would make the transfer, not the kernel, the thing worth optimizing first.
 
 ## Nsight Compute
-// TODO
+Back at the start of this post, "Profiling depth" was listed as a place CUDA wins: Nsight Compute gives per-kernel occupancy, register pressure, warp execution efficiency and memory-throughput breakdowns. Here's what those actually look like for `equirectToCubemapCrossKernel`, captured (with `--set full`, since the default set skips several of the sections below) on the same RTX 4080 as the Nsight Systems capture above.
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\NsightCompute_SpeedOfLight.png){:.postImg}
+
+**GPU Speed Of Light Throughput** is the headline chart: Compute (SM) Throughput sits at 69.58%, Memory Throughput at 61.71%, and Nsight Compute's own callout labels this "Balanced Throughput", both need to come down to meaningfully speed up the kernel, neither is idle while the other maxes out. The roofline breakdown adds a specific detail worth checking: the kernel hits only 14% of this device's FP32 peak (and, expectedly, 0% of FP64, nothing here uses doubles), despite that 69.58% overall SM throughput number. The gap between those two is the SFU pipe: `atan2f`, `sqrtf` and friends aren't running on the FP32 FMA units the roofline percentage tracks, they're running on the transcendental math hardware described in Compute Hierarchy, so a kernel can drive the SM hard without driving the FP32 pipe specifically. The reported duration, 564.10 µs, also lines up closely with the 574.228 µs from the Nsight Systems kernel summary, close enough to be normal run-to-run variance rather than a discrepancy worth chasing.
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\NsightCompute_WarpStateStats.png){:.postImg}
+
+**Warp State Statistics** 
+- `Stall Long Scoreboard`, a warp waiting on a global-memory load it issued, is the single largest bar: exactly the **bilinear sample's texel fetches** from `d_input`, each thread in a warp reading a different, data-dependent address because of the spherical-coordinate remapping, so those loads don't coalesce as cleanly as a straight image copy would and the warp pays for it in latency. 
+- `Stall Not Selected` is a close second, but that one isn't a problem: it means a warp was ready to issue and the scheduler picked a different ready warp instead, a sign there's enough parallelism resident to keep the SM fed, not a bottleneck. 
+- `Stall Wait` is next: a **fixed-latency** dependency stall, waiting on the result of a previous ALU/SFU instruction with known, constant latency, as opposed to a variable-latency memory load. The face → direction → spherical-coordinate math is a long chain of dependent scalar float ops (`dx`/`dy`/`dz` feed one `atan2f`, that feeds `xyLen`, that feeds a second `atan2f`, and so on), each one waiting out the previous instruction's pipeline latency before it can issue. It's the cost of that dependency chain, unrelated to memory.
+- `Stall LG Throttle` (Local/Global) is the load/store unit's instruction queue being full: the warp can't even *issue* its next memory instruction yet, separate from `Long Scoreboard` waiting on data already in flight. `sampleBilinear` issues four texel loads (`p00`/`p10`/`p01`/`p11`) per channel, times `kChannels = 3`, up to twelve global loads per thread for one bilinear sample, enough LG traffic to back up the queue on its own.
+- `Stall Math Pipe Throttle` shows up too, smaller but present, confirming the SFU-pressure point from the roofline chart above. 
+
+Divergence, by contrast, isn't a factor here: Avg. Active Threads Per Warp is 31.95 out of 32, so the per-face branch and the boundary-check `if` barely cost anything.
+
+![](/assets\img\posts\2026-08-XX-HLSLToCUDATranslation\NsightCompute_Occupancy.png){:.postImg}
+
+**Occupancy** closes the loop on a choice made back in "The Kernel": the 16 × 16 (256-thread, 8-warp) block size.\
+Of the four block limits Nsight Compute reports, registers allow 8 resident blocks/SM and shared memory allows 16 (unsurprising, this kernel uses none), but the warp count is what actually binds: 48 max warps/SM ÷ 8 warps/block = 6 blocks/SM, which is exactly the reported `Block Limit Warps`.\
+That's Theoretical Occupancy of 100%, no headroom left on the table by the block shape itself. Achieved Occupancy comes in at 85.28% (40.94 of 48 warps/SM), and Nsight Compute attributes that gap to scheduling overhead and workload imbalance rather than a sizing mistake, likely the tail end of the dispatch, where blocks covering the image's last rows finish and drain at slightly different times.
+
+It estimates a 14.72% local speedup if that gap closed, real, but not the kind of number that would change the conclusion from the Example Usage section: for a one-shot conversion tool, `d_input`'s coalescing and this occupancy gap are the two places left to optimize, and neither is worth chasing until this kernel runs inside something that calls it often enough for 564 µs to start adding up.
+
 # Sources
 - https://en.wikipedia.org/wiki/CUDA
 - [Fast matrix multiplies using graphics hardware][larsen-mcallister]
